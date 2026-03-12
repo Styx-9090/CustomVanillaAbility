@@ -1,18 +1,17 @@
 ﻿using BepInEx;
 using BepInEx.Unity.IL2CPP;
-using CustomVanillaAbility.CustomClasses;
+using HarmonyLib;
 using Lethe;
 using SimpleJSON;
-using Spine;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
+using CustomVanillaAbility.CustomClasses;
+using CustomVanillaAbility.TestingClass;
 
 namespace CustomVanillaAbility;
 
-[BepInPlugin(GUID, NAME, VERSION)]
+[BepInPlugin(GUID, NAME, VERSION), BepInDependency("Lethe")]
 public class CustomVanillaAbilityMain : BasePlugin
 {
     public const string GUID = $"{AUTHOR}.{NAME}";
@@ -21,6 +20,7 @@ public class CustomVanillaAbilityMain : BasePlugin
     public const string AUTHOR = "Styx9090";
 
     public static CustomVanillaAbilityMain Instance;
+    public static Harmony modHarmony;
 
     internal System.Collections.Generic.Dictionary<string, CustomAbilityBundle> customAbilityDict;
 
@@ -31,8 +31,13 @@ public class CustomVanillaAbilityMain : BasePlugin
         Instance = this;
         skillPath = @"custom_limbus_data\skill";
 
+        modHarmony = new Harmony(GUID);
+        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches));
+        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
+
         customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
         customAbilityDict.Add("skill", new CustomAbilityBundle());
+        RegisterCustomAbility(new SkillAbility_StyxTesting());
     }
 
     public void RegisterCustomAbility(CustomAbilityBase customAbility)
@@ -44,26 +49,29 @@ public class CustomVanillaAbilityMain : BasePlugin
 
             if (bundle == null) return;
 
-            bundle.abilityHash.Add(customAbility);
-            bundle.abilityLookup.Add(nameof(customAbility));
+            string abilityName = nameof(customAbility);
+            if (abilityName.StartsWith("SkillAbility_", StringComparison.OrdinalIgnoreCase)) abilityName = abilityName.Substring(13);
+            bundle.abilityClassDict.Add(abilityName, customAbility);
+            bundle.abilityLookup.Add(abilityName);
             if (bundle.availableState == false) bundle.availableState = true;
         }
     }
 
 
-    public void ScanModFiles(string filesPath, System.Collections.Generic.HashSet<string> lookupHash, out System.Collections.Generic.HashSet<int> outHash)
+    public JSONArray ScanModFiles(string filesPath, System.Collections.Generic.HashSet<string> lookupHash, out System.Collections.Generic.HashSet<int> outHash)
     {
         outHash = null;
+        JSONArray finalList = null;
         foreach (string modPath in Directory.GetDirectories(LetheMain.modsPath.FullPath))
         {
             string finalFilePath = Path.Combine(filesPath, modPath);
 
-            if (!Directory.Exists(finalFilePath)) return;
+            if (!Directory.Exists(finalFilePath)) return null;
 
             foreach (string jsonFilePath in Directory.GetFiles(finalFilePath))
             {
                 string jsonFile = File.ReadAllText(jsonFilePath);
-                if (!lookupHash.Any(jsonFile.Contains)) return;
+                if (!lookupHash.Any(jsonFile.Contains)) return null;
 
                 if (outHash == null) outHash = new System.Collections.Generic.HashSet<int>();
 
@@ -75,8 +83,11 @@ public class CustomVanillaAbilityMain : BasePlugin
                 {
                     JSONNode data = list[i];
                     outHash.Add(data["id"].AsInt);
+                    finalList.Add(data);
                 }
             }
         }
+
+        return finalList;
     }
 }

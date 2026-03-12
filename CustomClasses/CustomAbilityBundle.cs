@@ -8,7 +8,7 @@ namespace CustomVanillaAbility.CustomClasses
     {
         public bool availableState;
 
-        internal System.Collections.Generic.HashSet<CustomAbilityBase> abilityHash;
+        internal System.Collections.Generic.Dictionary<string, CustomAbilityBase> abilityClassDict;
         internal System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<CustomAbilityBase>> customAbilityDict;
         internal System.Collections.Generic.HashSet<string> abilityLookup;
         internal System.Collections.Generic.HashSet<int> affectedLookup;
@@ -17,19 +17,18 @@ namespace CustomVanillaAbility.CustomClasses
         public CustomAbilityBundle()
         {
             availableState = false;
-            abilityHash = new System.Collections.Generic.HashSet<CustomAbilityBase>();
+            abilityClassDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBase>(StringComparer.OrdinalIgnoreCase);
             customAbilityDict = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<CustomAbilityBase>>();
             affectedLookup = new System.Collections.Generic.HashSet<int>();
             abilityLookup = new System.Collections.Generic.HashSet<string>();
         }
 
 
-        public void ClearAll()
+        public void SafeClean()
         {
             customAbilityDict.Clear();
             abilityLookup.Clear();
             affectedLookup.Clear();
-            abilityHash.Clear();
         }
     }
 }

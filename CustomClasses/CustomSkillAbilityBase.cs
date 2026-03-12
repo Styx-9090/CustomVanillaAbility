@@ -5,13 +5,7 @@ using System.Runtime.InteropServices;
 
 public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
 {
-    protected SkillModel _skillModel;
-    protected float _jsonValue;
-    protected int _index;
-    protected int _limitedActivateCount;
-    protected ConditionalData _conditionalData;
-
-    protected BuffReferenceData _info;
+    public SkillModel _skillModel;
     public SkillAbility _reserveAbility = new SkillAbility();
 
 
@@ -37,7 +31,7 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
 
     protected virtual bool _isRandomPickableSkill
     {
-        get { return false; }   
+        get { return false; }
     }
 
     public CustomSkillAbilityBase()
@@ -50,8 +44,18 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         this._skillModel = skill;
         this._index = idx;
         this._jsonValue = jsonValue;
-
         this._reserveAbility.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
+
+        this._bannedMethodTriggerNames.Add("Init");
+        this._bannedMethodTriggerNames.Add("AttachConditionalData");
+        this._bannedMethodTriggerNames.Add("InitLimitedActivateCountData");
+        this._bannedMethodTriggerNames.Add("ReturnUniqueData");
+        this.SetTrigger("skill");
+    }
+
+    public override object ReturnUniqueData()
+    {
+        return this._skillModel;
     }
 
     public virtual void AttachConditionalData(ConditionalData conditionalData)
@@ -59,10 +63,14 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         this._conditionalData = conditionalData;
     }
 
-    protected virtual void InitLimitedActivateCountData(int turnLimit)
+    public virtual void InitLimitedActivateCountData(int turnLimit)
     {
-        this._limitedActivateCount = -1;
+        this._limitedActivateCount = turnLimit;
     }
+
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
 
     public virtual bool IsShow()
     {
@@ -133,6 +141,104 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
     {
         return false;
     }
+
+    public virtual bool OverwriteCriticalResult(BattleActionModel action, CoinModel coin, bool tempCritical, out bool? overwirteCriticalResult)
+    {
+        overwirteCriticalResult = null;
+        return false;
+    }
+
+    public virtual bool BeforeCompleteCommand(BattleActionModel action, BATTLE_EVENT_TIMING timing, out int newSkillID)
+    {
+        newSkillID = 0;
+        return false;
+    }
+
+    public virtual bool OverwriteCanDuel(BattleActionModel action, out bool canDuel, BattleActionModel opponentActionOrNull = null)
+    {
+        canDuel = false;
+        return false;
+    }
+
+    public virtual bool CanBeChangedTarget(BattleActionModel ownerAction, out bool canChangedTarget)
+    {
+        canChangedTarget = false;
+        return false;
+    }
+
+    public virtual bool CanChangeMainTargetRegardlessSpeed(BattleActionModel otherAction)
+    {
+        return false;
+    }
+
+    public virtual bool CanBeChangedTargetIgnoreSpeed(BattleActionModel action, BattleActionModel otherAction)
+    {
+        return false;
+    }
+
+    public virtual bool IsDefenseSkillForOther(BattleUnitModel self, BattleUnitModel originTarget, BattleActionModel opponentActionOrNull)
+    {
+        return false;
+    }
+
+    public virtual bool CanCheckErode(BattleActionModel action)
+    {
+        return false;
+    }
+
+    public virtual bool IsReusable(BattleActionModel action)
+    {
+        return false;
+    }
+
+    public virtual bool IsChangeable(BattleActionModel action)
+    {
+        return false;
+    }
+
+    public virtual bool BlockAddSinStock(BattleActionModel action)
+    {
+        return false;
+    }
+
+    public virtual bool IsBlockingTargetBurstBuffEffectReact(BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing)
+    {
+        return false;
+    }
+
+    public virtual bool IsBlockingTargetSinkingBuffEffectReact(BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing)
+    {
+        return false;
+    }
+
+    public virtual bool CanRollCoin(BattleActionModel action, CoinModel coin, out bool forceToEndSkill)
+    {
+        forceToEndSkill = false;
+        return true;
+    }
+
+    public virtual bool OverwriteParryingResult(BattleActionModel actorAction, int tempActorResult, BattleActionModel oppoAction, int tempOppoResult, out int? overwriteResult)
+    {
+        overwriteResult = null;
+        return false;
+    }
+
+    public virtual bool TryGetOverwriteAtkBehaviour(CoinModel coin, out ATK_BEHAVIOUR atkBehaviour)
+    {
+        atkBehaviour = ATK_BEHAVIOUR.NONE;
+        return false;
+    }
+
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+
+    public virtual string OverwriteSkillIconID()
+    {
+        return null;
+    }
+
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
 
     public virtual int StackNextTurnAggroAdder()
     {
@@ -274,6 +380,14 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return 0;
     }
 
+    public virtual int ChangeAttackDamage(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, BATTLE_EVENT_TIMING timing)
+    {
+        return resultDmg;
+    }
+
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+
     public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isCritical)
     {
         return 1f;
@@ -304,6 +418,21 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return prob;
     }
 
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+
+    public virtual global::ATTRIBUTE_TYPE OverwriteAttributeType()
+    {
+        return global::ATTRIBUTE_TYPE.NONE;
+    }
+
+    public virtual COIN_RESULT GetForcedCoinResult(BattleActionModel action, bool? isParrying)
+    {
+        return COIN_RESULT.NONE;
+    }
+
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
 
     public virtual List<PrimeTargetData> GetPrimeTargets(BattleActionModel action)
     {
@@ -315,61 +444,35 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return new List<AB_PART_TYPE>();
     }
 
-    public virtual void OverwriteTargetableList(BattleActionModel action, List<SinActionModel> targetableSlotListOrNull, List<BattleUnitModel> targetableUnitListOrNull, List<SinActionModel> addedSlotListOrNull)
-    {
-        
-    }
-
-
-
-    public virtual string OverwriteSkillIconID()
-    {
-        return null;
-    }
-
-    public virtual global::ATTRIBUTE_TYPE OverwriteAttributeType()
-    {
-        return global::ATTRIBUTE_TYPE.NONE;
-    }
-
-
-    public virtual bool OverwriteCriticalResult(BattleActionModel action, CoinModel coin, bool tempCritical, out bool? overwirteCriticalResult)
-    {
-        overwirteCriticalResult = null;
-        return false;
-    }
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
 
     public virtual ValueTuple<int, int> GetMultifliedDamage(BattleActionModel action, BattleUnitModel target)
     {
         return new ValueTuple<int, int>(0, 0);
     }
 
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
 
-    public virtual bool BeforeCompleteCommand(BattleActionModel action, BATTLE_EVENT_TIMING timing, out int newSkillID)
+    public virtual void OverwriteTargetableList(BattleActionModel action, List<SinActionModel> targetableSlotListOrNull, List<BattleUnitModel> targetableUnitListOrNull, List<SinActionModel> addedSlotListOrNull)
     {
-        newSkillID = 0;
-        return false;
     }
 
     public virtual void BeforeBehaviour(BattleActionModel action, BATTLE_EVENT_TIMING timing)
     {
-       
     }
 
     public virtual void BeforeAttack(BattleActionModel action, BATTLE_EVENT_TIMING timing)
     {
-       
     }
 
     public virtual void BeforeGiveAttackDamage(BattleActionModel action, BattleUnitModel target, BATTLE_EVENT_TIMING timing)
     {
-        
     }
-
 
     public virtual void OnCompleteCommand(BattleActionModel action, BATTLE_EVENT_TIMING timing)
     {
-        
     }
 
     public virtual void OnBattleStart(BattleActionModel action, BATTLE_EVENT_TIMING timing)
@@ -480,11 +583,6 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
     {
     }
 
-    public virtual int ChangeAttackDamage(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, BATTLE_EVENT_TIMING timing)
-    {
-        return resultDmg;    
-    }
-
     public virtual void OnSucceedEvade(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing)
     {
     }
@@ -513,6 +611,72 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
     {
     }
 
+    public virtual void OnStartBehaviour(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnUseBuffStackBySkill(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int stack)
+    {
+    }
+
+    public virtual void OnUseBuffTurnBySkill(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int turn)
+    {
+    }
+
+    public virtual void RightBeforeGiveBuffBySkill(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical)
+    {
+    }
+
+    public virtual void RightAfterGiveBuffBySkill(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical)
+    {
+    }
+
+    public virtual void OnSkillChangedEgo(BattleActionModel action, bool isOverClock, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnChangeSkillBeforeCompleteCommand(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnCancelAction(BattleActionModel action)
+    {
+    }
+
+    public virtual void OnStartTurn_AfterLog(BattleActionModel action, List<BattleUnitModel> targetList, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnAttackCanceledByAbility(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+    { 
+    }
+
+    public virtual void OnAfterParryingOnce_BeforeLog(PARRYING_RESULT reuslt, BattleActionModel ownerAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnKillTarget(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnBreakTarget(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnDestroyTargetPart(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel_Abnormality_Part target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+    public virtual void OnAddCoinByAbility(BattleActionModel action, CoinModel newCoin, BATTLE_EVENT_TIMING timing)
+    {
+    }
+
+
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------------------------//
+
 
     protected void GiveBuff_BySkill(BattleUnitModel target, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, int stack, int turn, int activeRound, BATTLE_EVENT_TIMING timing, [Optional] CoinModel coinOrNull, [Optional] bool? isCritical)
     {
@@ -522,37 +686,25 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
     protected void UseBuffStack(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int stack, [Optional] int? overwriteStack)
     {
         this._reserveAbility.UseBuffStack(owner, action, bufKeyword, timing, stack, (Il2CppSystem.Nullable<int>)overwriteStack);
-    }
-
-    protected void OnUseBuffStackBySkill(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int stack)
-    {
+        //this.OnUseBuffStackBySkill(owner, action, bufKeyword, timing, stack);
     }
 
     protected void UseBuffAllStack(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, out int usedStack)
     {
         this._reserveAbility.UseBuffAllStack(owner, action, bufKeyword, timing, out usedStack);
+        //this.OnUseBuffStackBySkill(owner, action, bufKeyword, timing, usedStack);
     }
 
     protected void UseBuffTurn(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int turn)
     {
         this._reserveAbility.UseBuffTurn(owner, action, bufKeyword, timing, turn);
-    }
-
-    protected void OnUseBuffTurnBySkill(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int turn)
-    {
+        //this.OnUseBuffTurnBySkill(owner, action, bufKeyword, timing, turn);
     }
 
     protected void UseBuffAllTurn(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, out int usedTurn)
     {
         this._reserveAbility.UseBuffAllTurn(owner, action, bufKeyword, timing, out usedTurn);
-    }
-
-    public virtual void RightBeforeGiveBuffBySkill(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical)
-    {
-    }
-
-    public virtual void RightAfterGiveBuffBySkill(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical)
-    {
+        //this.OnUseBuffTurnBySkill(owner, action, bufKeyword, timing, usedTurn);
     }
 
     protected void CopyCoinModelAndAddToListByIndex(BattleActionModel action, int idx, BATTLE_EVENT_TIMING timing)
@@ -567,10 +719,13 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
 
     protected void RemoveCoinModelFromListByIndex(int idx)
     {
-        this._skillModel._coinList.RemoveAt(idx);
+        if (idx >= 0 && idx < this._skillModel._coinList.Count)
+        {
+            this._skillModel._coinList.RemoveAt(idx);
+        }
     }
 
-    protected void DisbleCoin(int idx)         
+    protected void DisbleCoin(int idx)
     {
         this._skillModel.DisableCoin(idx);
     }
@@ -595,12 +750,6 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
             return owner.CheckAbilityActivateCount(stringKey, this._limitedActivateCount);
         }
         return false;
-    }
-
-    protected virtual void OnActivateAbility(BattleUnitModel owner)
-    {
-        string stringKey = this.GetStringKey();
-        owner.OnActivateAbility(stringKey);
     }
 
     private string GetStringKey()

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Linq;
 
 namespace CustomVanillaAbility.CustomClasses
 {
     public abstract class CustomAbilityBase
     {
         public AbilityBase _reservedBaseAbility;
-
+        public System.Collections.Generic.HashSet<string> _triggerMethodHash = new System.Collections.Generic.HashSet<string>();
+        public System.Collections.Generic.HashSet<string> _bannedMethodTriggerNames = new System.Collections.Generic.HashSet<string>();
 
         public ABILITY_SOURCE_TYPE AbilitySourceType
         {
@@ -58,8 +61,19 @@ namespace CustomVanillaAbility.CustomClasses
                 return new System.Collections.Generic.List<string>();
             }
         }
-    }
 
+        public virtual void SetTrigger(string abilityType)
+        {
+            this._triggerMethodHash = this.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => m.IsVirtual && !m.IsFinal && m.IsOverride() && !_bannedMethodTriggerNames.Any(banned => m.Name.Contains(banned)))
+                .Select(m => m.Name).ToHashSet();
+        }
+
+        public virtual object ReturnUniqueData()
+        {
+            return null;
+        }
+    }
 
     //--------------------------------------------------------------------------//
     //--------------------------------------------------------------------------//
@@ -69,7 +83,14 @@ namespace CustomVanillaAbility.CustomClasses
 
     public abstract class CustomActionAbilityBase : CustomAbilityBase
     {
-        public int BloodDinnerIndex
+        public float _jsonValue;
+        public int _index;
+        public int _limitedActivateCount;
+        public ConditionalData _conditionalData;
+        public BuffReferenceData _info;
+
+
+        public virtual int BloodDinnerIndex
         {
             get
             {
