@@ -37,41 +37,39 @@ public class CustomVanillaAbilityMain : BasePlugin
 
         customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
         customAbilityDict.Add("skill", new CustomAbilityBundle());
-        RegisterCustomAbility(new SkillAbility_StyxTesting());
+        RegisterCustomAbility<SkillAbility_StyxTesting>();
     }
 
-    public void RegisterCustomAbility(CustomAbilityBase customAbility)
+    public void RegisterCustomAbility<T>() where T : CustomAbilityBase
     {
-        if (customAbility != null)
+        System.Type abilityType = typeof(T);
+        string abilityName = abilityType.Name;
+        if (abilityType != null)
         {
             CustomAbilityBundle bundle = null;
-            if (customAbility is CustomSkillAbilityBase) bundle = customAbilityDict["skill"];
+            if (abilityType.IsSubclassOf(typeof(CustomSkillAbilityBase)) ||  abilityType == typeof(CustomSkillAbilityBase)) bundle = customAbilityDict["skill"];
 
-            if (bundle == null) return;
-
-            string abilityName = nameof(customAbility);
-            if (abilityName.StartsWith("SkillAbility_", StringComparison.OrdinalIgnoreCase)) abilityName = abilityName.Substring(13);
-            bundle.abilityClassDict.Add(abilityName, customAbility);
+            if (bundle == null || bundle.abilityClassDict.ContainsKey(abilityName)) return;
+            bundle.abilityClassDict.Add(abilityName, abilityType);
             bundle.abilityLookup.Add(abilityName);
             if (bundle.availableState == false) bundle.availableState = true;
         }
     }
 
 
-    public JSONArray ScanModFiles(string filesPath, System.Collections.Generic.HashSet<string> lookupHash, out System.Collections.Generic.HashSet<int> outHash)
+    public void ScanModFiles(string filesPath, System.Collections.Generic.HashSet<string> lookupHash, out System.Collections.Generic.HashSet<int> outHash)
     {
         outHash = null;
-        JSONArray finalList = null;
         foreach (string modPath in Directory.GetDirectories(LetheMain.modsPath.FullPath))
         {
             string finalFilePath = Path.Combine(filesPath, modPath);
 
-            if (!Directory.Exists(finalFilePath)) return null;
+            if (!Directory.Exists(finalFilePath)) return;
 
             foreach (string jsonFilePath in Directory.GetFiles(finalFilePath))
             {
                 string jsonFile = File.ReadAllText(jsonFilePath);
-                if (!lookupHash.Any(jsonFile.Contains)) return null;
+                if (!lookupHash.Any(jsonFile.Contains)) return;
 
                 if (outHash == null) outHash = new System.Collections.Generic.HashSet<int>();
 
@@ -83,11 +81,8 @@ public class CustomVanillaAbilityMain : BasePlugin
                 {
                     JSONNode data = list[i];
                     outHash.Add(data["id"].AsInt);
-                    finalList.Add(data);
                 }
             }
         }
-
-        return finalList;
     }
 }

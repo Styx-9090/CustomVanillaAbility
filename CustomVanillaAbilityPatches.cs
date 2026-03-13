@@ -4,37 +4,40 @@ using Lethe.Patches;
 using SimpleJSON;
 using System;
 using System.Linq;
-using static BattleUI.Abnormality.AbnormalityPartSkills;
 
 namespace CustomVanillaAbility
 {
     public static class CustomVanillaAbilityPatches
     {
         [HarmonyPatch(typeof(Data), nameof(Data.LoadCustomLocale), new[] { typeof(LOCALIZE_LANGUAGE) })]
-        [HarmonyPostfix, HarmonyPriority(Priority.Low)]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void Postfix_Data_LoadCustomLocale(LOCALIZE_LANGUAGE lang)
         {
             CustomVanillaAbilityMain main = CustomVanillaAbilityMain.Instance;
 
+
+            //Skills and Coins
             bool skillFlag = main.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle skillBundle);
             bool coinFlag = main.customAbilityDict.TryGetValue("coin", out CustomAbilityBundle coinBundle);
 
-            JSONArray skillAbilityArray = null;
             if (skillFlag || coinFlag)
             {
+                if (skillFlag) skillBundle.SafeClean();
+                if (coinFlag) coinBundle.SafeClean();
+
                 if (skillFlag && coinFlag)
                 {
                     System.Collections.Generic.HashSet<string> skillSpecialCheck = new();
                     skillSpecialCheck.UnionWith(skillBundle.abilityLookup);
                     skillSpecialCheck.UnionWith(coinBundle.abilityLookup);
 
-                    skillAbilityArray = main.ScanModFiles(main.skillPath, skillSpecialCheck, out System.Collections.Generic.HashSet<int> outSkillHash);
+                    main.ScanModFiles(main.skillPath, skillSpecialCheck, out System.Collections.Generic.HashSet<int> outSkillHash);
 
                     skillBundle.affectedLookup = outSkillHash;
                     coinBundle.affectedLookup = outSkillHash;
                 }
-                else if (skillFlag && !coinFlag) skillAbilityArray = main.ScanModFiles(main.skillPath, skillBundle.abilityLookup, out skillBundle.affectedLookup);
-                else skillAbilityArray = main.ScanModFiles(main.skillPath, coinBundle.abilityLookup, out coinBundle.affectedLookup);
+                else if (skillFlag && !coinFlag) main.ScanModFiles(main.skillPath, skillBundle.abilityLookup, out skillBundle.affectedLookup);
+                else main.ScanModFiles(main.skillPath, coinBundle.abilityLookup, out coinBundle.affectedLookup);
             }
         }
     }
@@ -42,8 +45,8 @@ namespace CustomVanillaAbility
 
     public static class CustomVanillaAbilityPatches_SkillModel
     {
-        [HarmonyPatch(nameof(SkillModel.Init))]
-        [HarmonyPostfix]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void Init_Postfix(SkillModel __instance)
         {
             if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle bundle)) return;
@@ -51,11 +54,8 @@ namespace CustomVanillaAbility
             int skillId = __instance.GetID();
             if (!bundle.affectedLookup.Contains(skillId)) return;
 
-            if (bundle.customAbilityDict.TryGetValue(skillId, out System.Collections.Generic.List<CustomAbilityBase> abilityList))
-            {
-                CustomVanillaAbilityHelper.RefreshAbilities<CustomSkillAbilityBase>(__instance, abilityList);
-                return;
-            }
+            int skillKey = __instance.GetID();
+            if (bundle.customAbilityDict.ContainsKey(skillKey)) return;
 
             System.Collections.Generic.List<CustomAbilityBase> newAbilities = new System.Collections.Generic.List<CustomAbilityBase>();
             int baseIndex = __instance.GetAbilityList().Count;
@@ -65,8 +65,8 @@ namespace CustomVanillaAbility
                 string scriptName = bundle.abilityLookup.FirstOrDefault(x => abilityData.scriptName.Contains(x));
                 if (scriptName == null) continue;
 
-                if (!bundle.abilityClassDict.TryGetValue(scriptName, out CustomAbilityBase template)) continue;
-                CustomSkillAbilityBase ability = Activator.CreateInstance(template.GetType()) as CustomSkillAbilityBase;
+                if (!bundle.abilityClassDict.TryGetValue(scriptName, out System.Type template)) continue;
+                CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(template);
 
                 int idx = baseIndex + newAbilities.Count + 1;
                 ability.Init(__instance, scriptName, abilityData.Value, idx, abilityData.TurnLimit, abilityData.BuffData);
@@ -75,68 +75,68 @@ namespace CustomVanillaAbility
 
                 newAbilities.Add(ability);
             }
-            bundle.customAbilityDict.Add(skillId, newAbilities);
+            bundle.customAbilityDict.Add(skillKey, newAbilities);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanTeamKillOnStableOverclock))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanTeamKillOnStableOverclock))]
         [HarmonyPostfix]
-        private static void CanTeamKillOnStableOverclock_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void CanTeamKillOnStableOverclock_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanTeamKillOnStableOverclock", ability => ability.CanTeamKillOnStableOverclock(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsShow))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsShow))]
         [HarmonyPostfix]
         private static void IsShow_Postfix(SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsShow", ability => !ability.IsShow(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IgnoreDefenseSkill))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IgnoreDefenseSkill))]
         [HarmonyPostfix]
-        private static void IgnoreDefenseSkill_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel target, ref bool __result)
+        private static void IgnoreDefenseSkill_Postfix(BattleActionModel action, BattleUnitModel target, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IgnoreDefenseSkill", ability => ability.IgnoreDefenseSkill(action, target), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsActionable))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsActionable))]
         [HarmonyPostfix]
-        private static void IsActionable_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void IsActionable_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsActionable", ability => ability.IsActionable(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsPanicBlock))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsPanicBlock))]
         [HarmonyPostfix]
         private static void IsPanicBlock_Postfix(SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsPanicBlock", ability => ability.IsPanicBlock(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsSkillAbsorbingThisDamage))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsSkillAbsorbingThisDamage))]
         [HarmonyPostfix]
         private static void IsSkillAbsorbingThisDamage_Postfix(SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsSkillAbsorbingThisDamage", ability => ability.IsSkillAbsorbingThisDamage(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanUseSkill))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanUseSkill))]
         [HarmonyPostfix]
-        private static void CanUseSkill_Postfix(SkillModel __instance, BattleUnitModel actor, ref bool __result)
+        private static void CanUseSkill_Postfix(BattleUnitModel actor, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanUseSkill", ability => ability.CanUseSkill(actor), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanDealTarget))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanDealTarget))]
         [HarmonyPostfix]
-        private static void CanDealTarget_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel target, CoinModel coin, ref bool __result)
+        private static void CanDealTarget_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanDealTarget", ability => ability.CanDealTarget(action, target, coin), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetPrimeTargets))]
-        [HarmonyPostfix]
-        private static void GetPrimeTargets_Postfix(SkillModel __instance, BattleActionModel action, ref Il2CppSystem.Collections.Generic.List<PrimeTargetData> __result)
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetPrimeTargets))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetPrimeTargets_Postfix(BattleActionModel action, SkillModel __instance, ref Il2CppSystem.Collections.Generic.List<PrimeTargetData> __result)
         {
             if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(__instance.GetID())) return;
 
@@ -154,719 +154,719 @@ namespace CustomVanillaAbility
             }
         }
 
-        [HarmonyPatch(nameof(SkillModel.AttackByMpDmgRatherThanHpDmg))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.AttackByMpDmgRatherThanHpDmg))]
         [HarmonyPostfix]
-        private static void AttackByMpDmgRatherThanHpDmg_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, int resultDmg, ref bool __result)
+        private static void AttackByMpDmgRatherThanHpDmg_Postfix(BattleActionModel action, CoinModel coin, int resultDmg, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "AttackByMpDmgRatherThanHpDmg", ability => ability.AttackByMpDmgRatherThanHpDmg(action, coin, resultDmg), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.BlockLoseBuffByReactWithAction))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockLoseBuffByReactWithAction))]
         [HarmonyPostfix]
-        private static void BlockLoseBuffByReactWithAction_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD keyword, bool? isCritical, ref bool __result)
+        private static void BlockLoseBuffByReactWithAction_Postfix(BattleActionModel action, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD keyword, bool? isCritical, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BlockLoseBuffByReactWithAction", ability => ability.BlockLoseBuffByReactWithAction(action, keyword, isCritical), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.BlockGivingBuff))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockGivingBuff))]
         [HarmonyPostfix]
-        private static void BlockGivingBuff_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, ref bool __result)
+        private static void BlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BlockGivingBuff", ability => ability.BlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.ExpectedBlockGivingBuff))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.ExpectedBlockGivingBuff))]
         [HarmonyPostfix]
-        private static void ExpectedBlockGivingBuff_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, ref bool __result)
+        private static void ExpectedBlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "ExpectedBlockGivingBuff", ability => ability.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetSkillLevelAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillLevelAdder))]
         [HarmonyPostfix]
-        private static void GetSkillLevelAdder_Postfix(SkillModel __instance, BattleActionModel action, ref int __result)
+        private static void GetSkillLevelAdder_Postfix(BattleActionModel action, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetSkillLevelAdder", ability => ability.GetSkillLevelAdder(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetSkillPowerAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillPowerAdder))]
         [HarmonyPostfix]
-        private static void GetSkillPowerAdder_Postfix(SkillModel __instance, BattleActionModel action, COIN_ROLL_TYPE rollType, Il2CppSystem.Collections.Generic.List<CoinModel> coins, ref int __result)
+        private static void GetSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, Il2CppSystem.Collections.Generic.List<CoinModel> coins, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetSkillPowerAdder", ability => ability.GetSkillPowerAdder(action, rollType), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedSkillPowerAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedSkillPowerAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedSkillPowerAdder_Postfix(SkillModel __instance, BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull, ref int __result)
+        private static void GetExpectedSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedSkillPowerAdder", ability => ability.GetExpectedSkillPowerAdder(action, rollType, expectedTargetSinActionOrNull), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetEvadeSkillPowerAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetEvadeSkillPowerAdder))]
         [HarmonyPostfix]
-        private static void GetEvadeSkillPowerAdder_Postfix(SkillModel __instance, BattleActionModel evadeAction, BattleActionModel attackerAction, ref int __result)
+        private static void GetEvadeSkillPowerAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetEvadeSkillPowerAdder", ability => ability.GetEvadeSkillPowerAdder(evadeAction, attackerAction), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedEvadeSkillPowerAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedEvadeSkillPowerAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedEvadeSkillPowerAdder_Postfix(SkillModel __instance, BattleActionModel evadeAction, BattleActionModel attackerAction, ref int __result)
+        private static void GetExpectedEvadeSkillPowerAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedEvadeSkillPowerAdder", ability => ability.GetExpectedEvadeSkillPowerAdder(evadeAction, attackerAction), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetCoinScaleAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinScaleAdder))]
         [HarmonyPostfix]
-        private static void GetCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, ref int __result)
+        private static void GetCoinScaleAdder_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCoinScaleAdder", ability => ability.GetCoinScaleAdder(action, coin), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedCoinScaleAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedCoinScaleAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, SinActionModel targetSinActionOrNull, ref int __result)
+        private static void GetExpectedCoinScaleAdder_Postfix(BattleActionModel action, CoinModel coin, SinActionModel targetSinActionOrNull, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedCoinScaleAdder", ability => ability.GetExpectedCoinScaleAdder(action, coin, targetSinActionOrNull), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetSkillPowerResultAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillPowerResultAdder))]
         [HarmonyPostfix]
-        private static void GetSkillPowerResultAdder_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing, CoinModel coinOrNull, ref int __result)
+        private static void GetSkillPowerResultAdder_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, CoinModel coinOrNull, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetSkillPowerResultAdder", ability => ability.GetSkillPowerResultAdder(action, timing), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetEvadeCoinScaleAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetEvadeCoinScaleAdder))]
         [HarmonyPostfix]
-        private static void GetEvadeCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel evadeAction, BattleActionModel attackerAction, ref int __result)
+        private static void GetEvadeCoinScaleAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetEvadeCoinScaleAdder", ability => ability.GetEvadeCoinScaleAdder(evadeAction, attackerAction), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedEvadeCoinScaleAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedEvadeCoinScaleAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedEvadeCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel evadeAction, BattleActionModel attackerAction, ref int __result)
+        private static void GetExpectedEvadeCoinScaleAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedEvadeCoinScaleAdder", ability => ability.GetExpectedEvadeCoinScaleAdder(evadeAction, attackerAction), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedSkillPowerResultAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedSkillPowerResultAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedSkillPowerResultAdder_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel expectedTarget, ref int __result)
+        private static void GetExpectedSkillPowerResultAdder_Postfix(BattleActionModel action, BattleUnitModel expectedTarget, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedSkillPowerResultAdder", ability => ability.GetExpectedSkillPowerResultAdder(action, expectedTarget), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetParryingResultAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetParryingResultAdder))]
         [HarmonyPostfix]
-        private static void GetParryingResultAdder_Postfix(SkillModel __instance, BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, ref int __result)
+        private static void GetParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetParryingResultAdder", ability => ability.GetParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedParryingResultAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedParryingResultAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedParryingResultAdder_Postfix(SkillModel __instance, BattleActionModel actorAction, int actorResult, BattleActionModel oppoActionOrNull, int oppoResult, ref int __result)
+        private static void GetExpectedParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoActionOrNull, int oppoResult, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedParryingResultAdder", ability => ability.GetExpectedParryingResultAdder(actorAction, actorResult, oppoActionOrNull, oppoResult), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetOpponentParryingResultAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetOpponentParryingResultAdder))]
         [HarmonyPostfix]
-        private static void GetOpponentParryingResultAdder_Postfix(SkillModel __instance, BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, ref int __result)
+        private static void GetOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetOpponentParryingResultAdder", ability => ability.GetOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedOpponentParryingResultAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedOpponentParryingResultAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedOpponentParryingResultAdder_Postfix(SkillModel __instance, BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, ref int __result)
+        private static void GetExpectedOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedOpponentParryingResultAdder", ability => ability.GetExpectedOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetAttackDmgMultiplier))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackDmgMultiplier))]
         [HarmonyPostfix]
-        private static void GetAttackDmgMultiplier_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, ref float __result)
+        private static void GetAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAttackDmgMultiplier", ability => ability.GetAttackDmgMultiplier(action, coin, target, isCritical), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedAttackDmgMultiplier))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedAttackDmgMultiplier))]
         [HarmonyPostfix]
-        private static void GetExpectedAttackDmgMultiplier_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, ref float __result)
+        private static void GetExpectedAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedAttackDmgMultiplier", ability => ability.GetExpectedAttackDmgMultiplier(action, targetOrNull, coin), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetAttackDmgAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackDmgAdder))]
         [HarmonyPostfix]
-        private static void GetAttackDmgAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, ref int __result)
+        private static void GetAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAttackDmgAdder", ability => ability.GetAttackDmgAdder(action, target), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedAttackDmgAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedAttackDmgAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedAttackDmgAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, ref int __result)
+        private static void GetExpectedAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedAttackDmgAdder", ability => ability.GetExpectedAttackDmgAdder(action, targetOrNull), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetAttackHpDmgAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackHpDmgAdder))]
         [HarmonyPostfix]
-        private static void GetAttackHpDmgAdder_Postfix(SkillModel __instance, BattleUnitModel target, CoinModel coin, bool isWinDuel, ref int __result)
+        private static void GetAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAttackHpDmgAdder", ability => ability.GetAttackHpDmgAdder(target), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetExpectedAttackHpDmgAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedAttackHpDmgAdder))]
         [HarmonyPostfix]
-        private static void GetExpectedAttackHpDmgAdder_Postfix(SkillModel __instance, BattleUnitModel target, CoinModel coin, bool isWinDuel, ref int __result)
+        private static void GetExpectedAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedAttackHpDmgAdder", ability => ability.GetExpectedAttackHpDmgAdder(target), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetCriticalChanceMultiplier))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCriticalChanceMultiplier))]
         [HarmonyPostfix]
-        private static void GetCriticalChanceMultiplier_Postfix(SkillModel __instance, BattleActionModel action, ref float __result)
+        private static void GetCriticalChanceMultiplier_Postfix(BattleActionModel action, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCriticalChanceMultiplier", ability => ability.GetCriticalChanceMultiplier(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetCriticalChanceAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCriticalChanceAdder))]
         [HarmonyPostfix]
-        private static void GetCriticalChanceAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, ref float __result)
+        private static void GetCriticalChanceAdder_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCriticalChanceAdder", ability => ability.GetCriticalChanceAdder(action, coin), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.OverwriteCriticalResult))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteCriticalResult))]
         [HarmonyPostfix]
-        private static void OverwriteCriticalResult_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, bool tempCritical, ref bool? overwirteCriticalResult, ref bool __result)
+        private static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, ref bool? overwirteCriticalResult, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OverwriteCriticalResult", ability => ability.OverwriteCriticalResult(action, coin, tempCritical, out bool? overwirteCriticalResult), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetCoinProb), new Type[] { typeof(UnitModel), typeof(float) })]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(UnitModel), typeof(float) })]
         [HarmonyPostfix]
-        private static void GetCoinProb_UnitModel_Postfix(SkillModel __instance, UnitModel unit, float defaultProb, ref float __result)
+        private static void GetCoinProb_UnitModel_Postfix(UnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCoinProb", ability => ability.GetCoinProb(defaultProb), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetCoinProb), new Type[] { typeof(BattleUnitModel), typeof(float) })]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(BattleUnitModel), typeof(float) })]
         [HarmonyPostfix]
-        private static void GetCoinProb_BattleUnitModel_Postfix(SkillModel __instance, BattleUnitModel unit, float defaultProb, ref float __result)
+        private static void GetCoinProb_BattleUnitModel_Postfix(BattleUnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCoinProb", ability => ability.GetCoinProb(defaultProb), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetGiveBuffStackAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBuffStackAdder))]
         [HarmonyPostfix]
-        private static void GetGiveBuffStackAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack, ref int __result)
+        private static void GetGiveBuffStackAdder_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetGiveBuffStackAdder", ability => ability.GetBuffStackAdder(action, coinOrNull, target, keyword, stack), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetUseBuffTurnAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetUseBuffTurnAdder))]
         [HarmonyPostfix]
-        private static void GetUseBuffTurnAdder_Postfix(SkillModel __instance, BattleActionModel action, int turn, BUFF_UNIQUE_KEYWORD buf, ref int __result)
+        private static void GetUseBuffTurnAdder_Postfix(BattleActionModel action, int turn, BUFF_UNIQUE_KEYWORD buf, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetUseBuffTurnAdder", ability => ability.GetUseBuffTurnAdder(action, turn, buf), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetGiveBuffTurnAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBuffTurnAdder))]
         [HarmonyPostfix]
-        private static void GetGiveBuffTurnAdder_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int turn, ref int __result)
+        private static void GetGiveBuffTurnAdder_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int turn, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetGiveBuffTurnAdder", ability => ability.GetBuffTurnAdder(action, target, keyword, turn), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.BeforeAttack))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeAttack))]
         [HarmonyPostfix]
-        private static void BeforeAttack_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void BeforeAttack_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeAttack", ability => ability.BeforeAttack(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsRetreatSkill))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsRetreatSkill))]
         [HarmonyPostfix]
-        private static void IsRetreatSkill_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void IsRetreatSkill_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsRetreatSkill", ability => ability.IsRetreatSkill(action), out __result);
         }
 
         /*
-        [HarmonyPatch(nameof(SkillModel.OverwriteTargetableList))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteTargetableList))]
         [HarmonyPostfix]
-        private static void OverwriteTargetableList_Postfix(SkillModel __instance, BattleActionModel action, Il2CppSystem.Collections.Generic.List<SinActionModel> targetableSlotListOrNull, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targetableUnitListOrNull, Il2CppSystem.Collections.Generic.List<SinActionModel> addedSlotListOrNull)
+        private static void OverwriteTargetableList_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<SinActionModel> targetableSlotListOrNull, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targetableUnitListOrNull, Il2CppSystem.Collections.Generic.List<SinActionModel> addedSlotListOrNull)
         {
 
         }
         */
 
-        [HarmonyPatch(nameof(SkillModel.GetAdditionalActivateCountForDefenseSkill))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAdditionalActivateCountForDefenseSkill))]
         [HarmonyPostfix]
-        private static void GetAdditionalActivateCountForDefenseSkill_Postfix(SkillModel __instance, BattleUnitModel owner, ref int __result)
+        private static void GetAdditionalActivateCountForDefenseSkill_Postfix(BattleUnitModel owner, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAdditionalActivateCountForDefenseSkill", ability => ability.GetAdditionalActivateCountForDefenseSkill(owner), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.ChangeAttackDamage))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.ChangeAttackDamage))]
         [HarmonyPostfix]
-        private static void ChangeAttackDamage_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, ref int __result)
+        private static void ChangeAttackDamage_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "ChangeAttackDamage", ability => ability.ChangeAttackDamage(action, target, coin, resultDmg, isCritical, timing), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.GetGiveBsGaugeUpMultiplier))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBsGaugeUpMultiplier))]
         [HarmonyPostfix]
-        private static void GetGiveBsGaugeUpMultiplier_Postfix(SkillModel __instance, bool onGiveExplosion, BattleUnitModel target, BattleActionModel action, CoinModel coinOrNull, ref float __result)
+        private static void GetGiveBsGaugeUpMultiplier_Postfix(bool onGiveExplosion, BattleUnitModel target, BattleActionModel action, CoinModel coinOrNull, SkillModel __instance, ref float __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetGiveBsGaugeUpMultiplier", ability => ability.GetGiveBsGaugeUpMultiplier(onGiveExplosion, target, action, coinOrNull), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.OverwriteSkillIconID))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteSkillIconID))]
         [HarmonyPostfix]
         private static void OverwriteSkillIconID_Postfix(SkillModel __instance, ref string __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchStringLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OverwriteSkillIconID", ability => ability.OverwriteSkillIconID(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnUseCoinConsume))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnUseCoinConsume))]
         [HarmonyPostfix]
-        private static void OnUseCoinConsume_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing)
+        private static void OnUseCoinConsume_Postfix(BattleActionModel action, CoinModel coin, BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnUseCoinConsume", ability => ability.OnUseCoinConsume(action, coin, keyword, stack, turn, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.RightBeforeGiveBuffBySkill))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.RightBeforeGiveBuffBySkill))]
         [HarmonyPostfix]
-        private static void RightBeforeGiveBuffBySkill_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical)
+        private static void RightBeforeGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "RightBeforeGiveBuffBySkill", ability => ability.RightBeforeGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, activeRound, timing, isCritical));
         }
 
-        [HarmonyPatch(nameof(SkillModel.RightAfterGiveBuffBySkill))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.RightAfterGiveBuffBySkill))]
         [HarmonyPostfix]
-        private static void RightAfterGiveBuffBySkill_Postfix(SkillModel __instance, BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical)
+        private static void RightAfterGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "RightAfterGiveBuffBySkill", ability => ability.RightAfterGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, resultStack, resultTurn, activeRound, timing, isCritical));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnBattleStart))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBattleStart))]
         [HarmonyPostfix]
-        private static void OnBattleStart_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnBattleStart_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBattleStart", ability => ability.OnBattleStart(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnRoundEnd))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnRoundEnd))]
         [HarmonyPostfix]
-        private static void OnRoundEnd_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnRoundEnd_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnRoundEnd", ability => ability.OnRoundEnd(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnBeforeTurn))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeTurn))]
         [HarmonyPostfix]
-        private static void OnBeforeTurn_Postfix(SkillModel __instance, BattleActionModel action)
+        private static void OnBeforeTurn_Postfix(BattleActionModel action, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeTurn", ability => ability.OnBeforeTurn(action));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnBeforeDefense))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeDefense))]
         [HarmonyPostfix]
-        private static void OnBeforeDefense_Postfix(SkillModel __instance, BattleActionModel action)
+        private static void OnBeforeDefense_Postfix(BattleActionModel action, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeDefense", ability => ability.OnBeforeDefense(action));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnStartTurn_BeforeLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartTurn_BeforeLog))]
         [HarmonyPostfix]
-        private static void OnStartTurn_BeforeLog_Postfix(SkillModel __instance, BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing)
+        private static void OnStartTurn_BeforeLog_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartTurn_BeforeLog", ability => ability.OnStartTurn_BeforeLog(action, targets.ToSystem(), timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnTryEvade))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnTryEvade))]
         [HarmonyPostfix]
-        private static void OnTryEvade_Postfix(SkillModel __instance, BattleActionModel action, BattleActionModel attackerAction, BATTLE_EVENT_TIMING timing)
+        private static void OnTryEvade_Postfix(BattleActionModel action, BattleActionModel attackerAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnTryEvade", ability => ability.OnTryEvade(action, attackerAction, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.AfterRecheckTargetList))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.AfterRecheckTargetList))]
         [HarmonyPostfix]
-        private static void AfterRecheckTargetList_Postfix(SkillModel __instance, BattleActionModel action, bool valid, bool mainTargetAlive)
+        private static void AfterRecheckTargetList_Postfix(BattleActionModel action, bool valid, bool mainTargetAlive, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "AfterRecheckTargetList", ability => ability.AfterRecheckTargetList(action, valid, mainTargetAlive));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnStartDuel))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartDuel))]
         [HarmonyPostfix]
-        private static void OnStartDuel_Postfix(SkillModel __instance, BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+        private static void OnStartDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartDuel", ability => ability.OnStartDuel(selfAction, oppoAction, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnBeforeParryingOnce))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeParryingOnce))]
         [HarmonyPostfix]
-        private static void OnBeforeParryingOnce_Postfix(SkillModel __instance, BattleActionModel ownerAction, BattleActionModel oppoAction)
+        private static void OnBeforeParryingOnce_Postfix(BattleActionModel ownerAction, BattleActionModel oppoAction, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeParryingOnce", ability => ability.OnBeforeParryingOnce(ownerAction, oppoAction));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnBeforeParryingOnce_AfterLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeParryingOnce_AfterLog))]
         [HarmonyPostfix]
-        private static void OnBeforeParryingOnce_AfterLog_Postfix(SkillModel __instance, BattleActionModel ownerAction, BattleActionModel oppoAction)
+        private static void OnBeforeParryingOnce_AfterLog_Postfix(BattleActionModel ownerAction, BattleActionModel oppoAction, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeParryingOnce_AfterLog", ability => ability.OnBeforeParryingOnce(ownerAction, oppoAction));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnDuelAfter_BeforeLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDuelAfter_BeforeLog))]
         [HarmonyPostfix]
         private static void OnDuelAfter_BeforeLog_Postfix(SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDuelAfter_BeforeLog", ability => ability.OnDuelAfter_BeforeLog());
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnDuelAfter_AfterLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDuelAfter_AfterLog))]
         [HarmonyPostfix]
         private static void OnDuelAfter_AfterLog_Postfix(SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDuelAfter_AfterLog", ability => ability.OnDuelAfter_AfterLog());
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnWinParrying))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnWinParrying))]
         [HarmonyPostfix]
-        private static void OnWinParrying_Postfix(SkillModel __instance, BattleActionModel selfAction, BattleActionModel oppoAction)
+        private static void OnWinParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnWinParrying", ability => ability.OnWinParrying(selfAction, oppoAction));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnLoseParrying))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnLoseParrying))]
         [HarmonyPostfix]
-        private static void OnLoseParrying_Postfix(SkillModel __instance, BattleActionModel selfAction, BattleActionModel oppoAction)
+        private static void OnLoseParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnLoseParrying", ability => ability.OnLoseParrying(selfAction, oppoAction));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnWinDuel))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnWinDuel))]
         [HarmonyPostfix]
-        private static void OnWinDuel_Postfix(SkillModel __instance, BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, int parryingCount, BattleLog_Parrying lastLogOrNull)
+        private static void OnWinDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, int parryingCount, BattleLog_Parrying lastLogOrNull, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnWinDuel", ability => ability.OnWinDuel(selfAction, oppoAction, timing, parryingCount, lastLogOrNull));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnLoseDuel))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnLoseDuel))]
         [HarmonyPostfix]
-        private static void OnLoseDuel_Postfix(SkillModel __instance, BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+        private static void OnLoseDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnLoseDuel", ability => ability.OnLoseDuel(selfAction, oppoAction, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.BeforeBehaviour))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeBehaviour))]
         [HarmonyPostfix]
-        private static void BeforeBehaviour_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void BeforeBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeBehaviour", ability => ability.BeforeBehaviour(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnStartBehaviour))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartBehaviour))]
         [HarmonyPostfix]
-        private static void OnStartBehaviour_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnStartBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartBehaviour", ability => ability.OnStartBehaviour(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnCriticalIsActivated))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCriticalIsActivated))]
         [HarmonyPostfix]
-        private static void OnCriticalIsActivated_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
+        private static void OnCriticalIsActivated_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnCriticalIsActivated", ability => ability.OnCriticalIsActivated(action, coin, timing, affectKeywords.ConvertDictionary()));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnAttackConfirmed))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAttackConfirmed))]
         [HarmonyPostfix]
-        private static void OnAttackConfirmed_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing, bool isCritical)
+        private static void OnAttackConfirmed_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing, bool isCritical, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAttackConfirmed", ability => ability.OnAttackConfirmed(action, target, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.BeforeGiveAttackDamage))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeGiveAttackDamage))]
         [HarmonyPostfix]
-        private static void BeforeGiveAttackDamage_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel target, bool? isWinDuel, bool isCritical, BATTLE_EVENT_TIMING timing)
+        private static void BeforeGiveAttackDamage_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool? isWinDuel, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeGiveAttackDamage", ability => ability.BeforeGiveAttackDamage(action, target, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnSucceedAttack))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSucceedAttack))]
         [HarmonyPostfix]
-        private static void OnSucceedAttack_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing)
+        private static void OnSucceedAttack_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnSucceedAttack", ability => ability.OnSucceedAttack(action, coin, target, finalDmg, realDmg, isCritical, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnSucceedEvade))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSucceedEvade))]
         [HarmonyPostfix]
-        private static void OnSucceedEvade_Postfix(SkillModel __instance, BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing)
+        private static void OnSucceedEvade_Postfix(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnSucceedEvade", ability => ability.OnSucceedEvade(attackerAction, evadeAction, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnFailedEvade))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnFailedEvade))]
         [HarmonyPostfix]
-        private static void OnFailedEvade_Postfix(SkillModel __instance, BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing)
+        private static void OnFailedEvade_Postfix(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnFailedEvade", ability => ability.OnFailedEvade(attackerAction, evadeAction, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.BeforeCompleteCommand))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeCompleteCommand))]
         [HarmonyPostfix]
-        private static void BeforeCompleteCommand_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing, ref int newSkillID, ref bool __result)
+        private static void BeforeCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, ref int newSkillID, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeCompleteCommand", ability => ability.BeforeCompleteCommand(action, timing, out int newSkillID), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnCompleteCommand))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCompleteCommand))]
         [HarmonyPostfix]
-        private static void OnCompleteCommand_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnCompleteCommand", ability => ability.OnCompleteCommand(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnStartCoin))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartCoin))]
         [HarmonyPostfix]
-        private static void OnStartCoin_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
+        private static void OnStartCoin_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartCoin", ability => ability.OnStartCoin(action, coin));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnEndCoin_BeforeLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndCoin_BeforeLog))]
         [HarmonyPostfix]
-        private static void OnEndCoin_BeforeLog_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing)
+        private static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndCoin_BeforeLog", ability => ability.OnEndCoin_BeforeLog(action, coin, isCritical, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnEndCoin_AfterLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndCoin_AfterLog))]
         [HarmonyPostfix]
-        private static void OnEndCoin_AfterLog_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, bool isCritical, BATTLE_EVENT_TIMING timing)
+        private static void OnEndCoin_AfterLog_Postfix(BattleActionModel action, CoinModel coin, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndCoin_AfterLog", ability => ability.OnEndCoin_AfterLog(action, coin, isCritical, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnEndAttack))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndAttack))]
         [HarmonyPostfix]
-        private static void OnEndAttack_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnEndAttack_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndAttack", ability => ability.OnEndAttack(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnGiveBsGaugeUp))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnGiveBsGaugeUp))]
         [HarmonyPostfix]
-        private static void OnGiveBsGaugeUp_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleUnitModel target, int value, BATTLE_EVENT_TIMING timing, bool onExplosion)
+        private static void OnGiveBsGaugeUp_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int value, BATTLE_EVENT_TIMING timing, bool onExplosion, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnGiveBsGaugeUp", ability => ability.OnGiveBsGaugeUp(action, target, value, timing, onExplosion));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnEndBehaviour))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndBehaviour))]
         [HarmonyPostfix]
-        private static void OnEndBehaviour_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnEndBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndBehaviour", ability => ability.OnEndBehaviour(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnEndBehave_Refresh))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndBehave_Refresh))]
         [HarmonyPostfix]
-        private static void OnEndBehave_Refresh_Postfix(SkillModel __instance, BattleActionModel action)
+        private static void OnEndBehave_Refresh_Postfix(BattleActionModel action, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndBehave_Refresh", ability => ability.OnEndBehave_Refresh(action));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnEndTurn))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndTurn))]
         [HarmonyPostfix]
-        private static void OnEndTurn_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnEndTurn_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndTurn", ability => ability.OnEndTurn(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.DoneWithAction))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.DoneWithAction))]
         [HarmonyPostfix]
-        private static void DoneWithAction_Postfix(SkillModel __instance, BattleActionModel action)
+        private static void DoneWithAction_Postfix(BattleActionModel action, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "DoneWithAction", ability => ability.DoneWithAction(action));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnDiscarded))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDiscarded))]
         [HarmonyPostfix]
-        private static void OnDiscarded_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnDiscarded_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDiscarded", ability => ability.OnDiscarded(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.StackNextTurnAggroAdder))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.StackNextTurnAggroAdder))]
         [HarmonyPostfix]
         private static void StackNextTurnAggroAdder_Postfix(SkillModel __instance, ref int __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "StackNextTurnAggroAdder", ability => ability.StackNextTurnAggroAdder(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.OverrideCanDuel))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverrideCanDuel))]
         [HarmonyPostfix]
-        private static void OverwriteCanDuel_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result, BattleActionModel opponentActionOrNull = null)
+        private static void OverwriteCanDuel_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result, BattleActionModel opponentActionOrNull = null)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OverwriteCanDuel", ability => ability.OverwriteCanDuel(action, out bool canDuel, opponentActionOrNull), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanBeChangedTarget))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanBeChangedTarget))]
         [HarmonyPostfix]
-        private static void CanBeChangedTarget_Postfix(SkillModel __instance, BattleActionModel ownerAction, ref bool __result)
+        private static void CanBeChangedTarget_Postfix(BattleActionModel ownerAction, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanBeChangedTarget", ability => ability.CanBeChangedTarget(ownerAction, out bool canChangedTarget), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanChangeMainTargetRegardlessSpeed))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanChangeMainTargetRegardlessSpeed))]
         [HarmonyPostfix]
-        private static void CanChangeMainTargetRegardlessSpeed_Postfix(SkillModel __instance, BattleActionModel otherAction, ref bool __result)
+        private static void CanChangeMainTargetRegardlessSpeed_Postfix(BattleActionModel otherAction, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanChangeMainTargetRegardlessSpeed", ability => ability.CanBeChangedTargetIgnoreSpeed(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanBeChangedTargetIgnoreSpeed))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanBeChangedTargetIgnoreSpeed))]
         [HarmonyPostfix]
-        private static void CanBeChangedTargetIgnoreSpeed_Postfix(SkillModel __instance, BattleActionModel action, BattleActionModel otherAction, ref bool __result)
+        private static void CanBeChangedTargetIgnoreSpeed_Postfix(BattleActionModel action, BattleActionModel otherAction, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanBeChangedTargetIgnoreSpeed", ability => ability.CanBeChangedTargetIgnoreSpeed(), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsDefenseSkillForOther))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsDefenseSkillForOther))]
         [HarmonyPostfix]
-        private static void IsDefenseSkillForOther_Postfix(SkillModel __instance, BattleUnitModel self, BattleUnitModel originTarget, BattleActionModel opponentActionOrNull, ref bool __result)
+        private static void IsDefenseSkillForOther_Postfix(BattleUnitModel self, BattleUnitModel originTarget, BattleActionModel opponentActionOrNull, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsDefenseSkillForOther", ability => ability.IsDefenseSkillForOther(self, originTarget, opponentActionOrNull), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanCheckErode))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanCheckErode))]
         [HarmonyPostfix]
-        private static void CanCheckErode_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void CanCheckErode_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanCheckErode", ability => ability.CanCheckErode(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsReusable))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsReusable))]
         [HarmonyPostfix]
-        private static void IsReusable_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void IsReusable_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsReusable", ability => ability.IsReusable(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsChangeable))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsChangeable))]
         [HarmonyPostfix]
-        private static void IsChangeable_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void IsChangeable_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsChangeable", ability => ability.IsChangeable(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.BlockAddSinStock))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockAddSinStock))]
         [HarmonyPostfix]
-        private static void BlockAddSinStock_Postfix(SkillModel __instance, BattleActionModel action, ref bool __result)
+        private static void BlockAddSinStock_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BlockAddSinStock", ability => ability.BlockAddSinStock(action), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsBlockingTargetBurstBuffEffectReact))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsBlockingTargetBurstBuffEffectReact))]
         [HarmonyPostfix]
-        private static void IsBlockingTargetBurstBuffEffectReact_Postfix(SkillModel __instance, BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing, ref bool __result)
+        private static void IsBlockingTargetBurstBuffEffectReact_Postfix(BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsBlockingTargetBurstBuffEffectReact", ability => ability.IsBlockingTargetBurstBuffEffectReact(target, stack, turn, selfAction, selfCoin, isCritical, timing), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.IsBlockingTargetSinkingBuffEffectReact))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsBlockingTargetSinkingBuffEffectReact))]
         [HarmonyPostfix]
-        private static void IsBlockingTargetSinkingBuffEffectReact_Postfix(SkillModel __instance, BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing, ref bool __result)
+        private static void IsBlockingTargetSinkingBuffEffectReact_Postfix(BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref bool __result)
         {
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsBlockingTargetSinkingBuffEffectReact", ability => ability.IsBlockingTargetSinkingBuffEffectReact(target, stack, turn, selfAction, selfCoin, isCritical, timing), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.CanRollCoin))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanRollCoin))]
         [HarmonyPostfix]
-        private static void CanRollCoin_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, ref bool __result, out bool forceToEndSkill)
+        private static void CanRollCoin_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref bool __result, out bool forceToEndSkill)
         {
             forceToEndSkill = false;
             CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanRollCoin", ability => ability.CanRollCoin(action, coin, out bool forceToEndSkill), out __result);
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnSkillChangedEgo))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSkillChangedEgo))]
         [HarmonyPostfix]
-        private static void OnSkillChangedEgo_Postfix(SkillModel __instance, BattleActionModel action, bool isOverClock, BATTLE_EVENT_TIMING timing)
+        private static void OnSkillChangedEgo_Postfix(BattleActionModel action, bool isOverClock, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnSkillChangedEgo", ability => ability.OnSkillChangedEgo(action, isOverClock, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnChangeSkillBeforeCompleteCommand))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnChangeSkillBeforeCompleteCommand))]
         [HarmonyPostfix]
-        private static void OnChangeSkillBeforeCompleteCommand_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnChangeSkillBeforeCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnChangeSkillBeforeCompleteCommand", ability => ability.OnChangeSkillBeforeCompleteCommand(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnCancelAction))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCancelAction))]
         [HarmonyPostfix]
-        private static void OnCancelAction_Postfix(SkillModel __instance, BattleActionModel action)
+        private static void OnCancelAction_Postfix(BattleActionModel action, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnCancelAction", ability => ability.OnCancelAction(action));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnStartTurn_AfterLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartTurn_AfterLog))]
         [HarmonyPostfix]
-        private static void OnStartTurn_AfterLog_Postfix(SkillModel __instance, BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing)
+        private static void OnStartTurn_AfterLog_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartTurn_AfterLog", ability => ability.OnStartTurn_AfterLog(action, targets.ToSystem(), timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnAttackCanceledByAbility))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAttackCanceledByAbility))]
         [HarmonyPostfix]
-        private static void OnAttackCanceledByAbility_Postfix(SkillModel __instance, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        private static void OnAttackCanceledByAbility_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAttackCanceledByAbility", ability => ability.OnAttackCanceledByAbility(action, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnAfterParryingOnce_BeforeLog))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAfterParryingOnce_BeforeLog))]
         [HarmonyPostfix]
-        private static void OnAfterParryingOnce_BeforeLog_Postfix(SkillModel __instance, PARRYING_RESULT reuslt, BattleActionModel ownerAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+        private static void OnAfterParryingOnce_BeforeLog_Postfix(PARRYING_RESULT reuslt, BattleActionModel ownerAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAfterParryingOnce_BeforeLog", ability => ability.OnAfterParryingOnce_BeforeLog(reuslt, ownerAction, oppoAction, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnKillTarget))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnKillTarget))]
         [HarmonyPostfix]
-        private static void OnKillTarget_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+        private static void OnKillTarget_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnKillTarget", ability => ability.OnKillTarget(action, coinOrNull, target, dmgSrcType, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnBreakTarget))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBreakTarget))]
         [HarmonyPostfix]
-        private static void OnBreakTarget_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+        private static void OnBreakTarget_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBreakTarget", ability => ability.OnBreakTarget(action, coinOrNull, target, dmgSrcType, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnDestroyTargetPart))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDestroyTargetPart))]
         [HarmonyPostfix]
-        private static void OnDestroyTargetPart_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coinOrNull, BattleUnitModel_Abnormality_Part target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+        private static void OnDestroyTargetPart_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel_Abnormality_Part target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDestroyTargetPart", ability => ability.OnDestroyTargetPart(action, coinOrNull, target, dmgSrcType, timing));
         }
 
-        [HarmonyPatch(nameof(SkillModel.OnAddCoinByAbility))]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAddCoinByAbility))]
         [HarmonyPostfix]
-        private static void OnAddCoinByAbility_Postfix(SkillModel __instance, BattleActionModel action, CoinModel newCoin, BATTLE_EVENT_TIMING timing)
+        private static void OnAddCoinByAbility_Postfix(BattleActionModel action, CoinModel newCoin, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAddCoinByAbility", ability => ability.OnAddCoinByAbility(action, newCoin, timing));
         }

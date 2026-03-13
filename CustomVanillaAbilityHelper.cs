@@ -36,16 +36,6 @@ namespace CustomVanillaAbility
             return method.GetBaseDefinition() != method;
         }
 
-        public static void RefreshAbilities<T>(object uniqueData, List<CustomAbilityBase> abilityList) where T : CustomAbilityBase
-        {
-            if (abilityList.Count == 0) return;
-
-            if (abilityList[0] is not T firstAbility) return;
-            if (firstAbility.ReturnUniqueData() == uniqueData) return;
-
-            CustomVanillaAbilityMain.Instance.Log.LogInfo("I hate this shit mate");
-        }
-
         public static void ProcessPatchBoolLogic<T>(string dictKey, int id, string methodName, Func<T, bool> abilityCheck, out bool __result) where T : CustomAbilityBase
         {
             __result = false;
