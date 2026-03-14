@@ -122,7 +122,7 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return false;
     }
 
-    public virtual bool AttackByMpDmgRatherThanHpDmg(BattleActionModel action, CoinModel coin, int resultDmg)
+    public virtual bool AttackByMpDmgRatherThanHpDmg(BattleActionModel action, CoinModel coin, int resultDmg, BattleUnitModel target)
     {
         return false;
     }
@@ -154,9 +154,8 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return false;
     }
 
-    public virtual bool OverwriteCanDuel(BattleActionModel action, out bool canDuel, BattleActionModel opponentActionOrNull = null)
+    public virtual bool OverwriteCanDuel(bool value)
     {
-        canDuel = false;
         return false;
     }
 
@@ -270,12 +269,12 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return 0;
     }
 
-    public virtual int GetCoinScaleAdder(BattleActionModel action, CoinModel coin)
+    public virtual int GetCoinScaleAdder(BattleActionModel action, CoinModel coin, BattleActionModel oppoActionOrNull)
     {
         return 0;
     }
 
-    public virtual int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, SinActionModel targetSinActionOrNull)
+    public virtual int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel targetSinActionOrNull)
     {
         return 0;
     }
@@ -295,7 +294,7 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
         return 0;
     }
 
-    public virtual int GetExpectedSkillPowerResultAdder(BattleActionModel action, BattleUnitModel expectedTarget)
+    public virtual int GetExpectedSkillPowerResultAdder(BattleActionModel action, BattleUnitModel expectedTargetOrNull, SinActionModel expectedTargetSinActionOrNull, BattleActionModel expectedOppoActionOrNull)
     {
         return 0;
     }

@@ -10,12 +10,12 @@ namespace CustomVanillaAbility.TestingClass
             base.OnRoundEnd(action, timing);
         }
 
-        public override int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, SinActionModel targetSinActionOrNull)
+        public override int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel targetSinActionOrNull)
         {
             return TEST_BUFF;
         }
 
-        public override int GetCoinScaleAdder(BattleActionModel action, CoinModel coin)
+        public override int GetCoinScaleAdder(BattleActionModel action, CoinModel coin, BattleActionModel oppoActionOrNull)
         {
             return TEST_BUFF;
         }

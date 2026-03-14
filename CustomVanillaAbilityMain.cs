@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using CustomVanillaAbility.CustomClasses;
 using CustomVanillaAbility.TestingClass;
+using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility;
 
@@ -23,20 +24,27 @@ public class CustomVanillaAbilityMain : BasePlugin
     public static Harmony modHarmony;
 
     internal System.Collections.Generic.Dictionary<string, CustomAbilityBundle> customAbilityDict;
-
+    internal System.Collections.Generic.HashSet<int> generalAffectedHash;
     internal string skillPath;
 
+    private Regex classNameRegex;
+
+    
     public override void Load()
     {
         Instance = this;
         skillPath = @"custom_limbus_data\skill";
+        classNameRegex = new Regex(@"^(\w+Ability_)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
+        generalAffectedHash = new System.Collections.Generic.HashSet<int>();
+        customAbilityDict.Add("skill", new CustomAbilityBundle());
+
 
         modHarmony = new Harmony(GUID);
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
 
-        customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
-        customAbilityDict.Add("skill", new CustomAbilityBundle());
         RegisterCustomAbility<SkillAbility_StyxTesting>();
     }
 
@@ -51,37 +59,33 @@ public class CustomVanillaAbilityMain : BasePlugin
 
             if (bundle == null || bundle.abilityClassDict.ContainsKey(abilityName)) return;
             bundle.abilityClassDict.Add(abilityName, abilityType);
-            bundle.abilityLookup.Add(abilityName);
+            bundle.abilityLookup.Add(classNameRegex.Replace(abilityName, ""));
             if (bundle.availableState == false) bundle.availableState = true;
         }
     }
 
 
-    public void ScanModFiles(string filesPath, System.Collections.Generic.HashSet<string> lookupHash, out System.Collections.Generic.HashSet<int> outHash)
+    public void ScanModFiles(string filesPath, System.Collections.Generic.HashSet<string> lookupHash, out JSONArray outArray)
     {
-        outHash = null;
+        outArray = new JSONArray();
         foreach (string modPath in Directory.GetDirectories(LetheMain.modsPath.FullPath))
         {
-            string finalFilePath = Path.Combine(filesPath, modPath);
+            string finalFilePath = Path.Combine(modPath, filesPath);
+            Log.LogInfo(finalFilePath);
 
-            if (!Directory.Exists(finalFilePath)) return;
+            if (!Directory.Exists(finalFilePath)) continue;
 
             foreach (string jsonFilePath in Directory.GetFiles(finalFilePath))
             {
+                Log.LogInfo(jsonFilePath);
                 string jsonFile = File.ReadAllText(jsonFilePath);
-                if (!lookupHash.Any(jsonFile.Contains)) return;
-
-                if (outHash == null) outHash = new System.Collections.Generic.HashSet<int>();
+                if (!lookupHash.Any(jsonFile.Contains)) continue;
 
                 JSONNode root = JSON.Parse(jsonFile);
                 JSONArray list = root["list"]?.AsArray;
                 if (list == null) continue;
 
-                for (int i = 0; i < list.Count; i++)
-                {
-                    JSONNode data = list[i];
-                    outHash.Add(data["id"].AsInt);
-                }
+                foreach (JSONNode item in list) outArray.Add(item);
             }
         }
     }

@@ -36,14 +36,30 @@ namespace CustomVanillaAbility
             return method.GetBaseDefinition() != method;
         }
 
-        public static void ProcessPatchBoolLogic<T>(string dictKey, int id, string methodName, Func<T, bool> abilityCheck, out bool __result) where T : CustomAbilityBase
+        public static bool ProcessPatchListLogic(CustomAbilityBundle bundle, int instanceId, object instance,  out System.Collections.Generic.List<CustomAbilityBase> returnList)
+        {
+            returnList = null;
+
+
+            if (!bundle.affectedLookup.Contains(instanceId)) return false;
+            if (!bundle.customAbilityTable.TryGetValue(instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return false;
+
+            returnList = abilityList;
+            return true;
+        }
+
+        /*
+        public static void ProcessPatchBoolLogic<T>(string dictKey, int instanceId, object instance, string methodName, Func<T, bool> abilityCheck, out bool __result) where T : CustomAbilityBase
         {
             __result = false;
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(id)) return;
+            CustomVanillaAbilityMain.Instance.Log.LogInfo("Processing bool with name = " + methodName);
 
-            foreach (CustomSkillAbilityBase skillAbility in skillBundle.customAbilityDict[id])
+            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(instanceId)) return;
+            if (!skillBundle.customAbilityTable.TryGetValue(instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return;
+
+            foreach (CustomAbilityBase ability in abilityList)
             {
-                if (skillAbility is not T realAbility) continue;
+                if (ability is not T realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
                 if (abilityCheck(realAbility))
@@ -54,14 +70,17 @@ namespace CustomVanillaAbility
             }
         }
 
-        public static void ProcessPatchStringLogic<T>(string dictKey, int id, string methodName, Func<T, string> abilityCheck, out string __result) where T : CustomAbilityBase
+        public static void ProcessPatchStringLogic<T>(string dictKey, int instanceId, object instance, string methodName, Func<T, string> abilityCheck, out string __result) where T : CustomAbilityBase
         {
             __result = string.Empty;
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(id)) return;
+            CustomVanillaAbilityMain.Instance.Log.LogInfo("Processing string with name = " + methodName);
 
-            foreach (CustomSkillAbilityBase skillAbility in skillBundle.customAbilityDict[id])
+            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(instanceId)) return;
+            if (!skillBundle.customAbilityTable.TryGetValue(instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return;
+
+            foreach (CustomAbilityBase ability in abilityList)
             {
-                if (skillAbility is not T realAbility) continue;
+                if (ability is not T realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
                 string result = abilityCheck(realAbility);
@@ -69,45 +88,58 @@ namespace CustomVanillaAbility
             }
         }
 
-        public static void ProcessPatchIntLogic<T>(string dictKey, int id, string methodName, Func<T, int> abilityCheck, out int __result) where T : CustomAbilityBase
+        public static void ProcessPatchIntLogic<T>(string dictKey, int instanceId, object instance, string methodName, Func<T, int> abilityCheck, out int __result) where T : CustomAbilityBase
         {
             __result = 0;
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(id)) return;
+            CustomVanillaAbilityMain.Instance.Log.LogInfo("Processing int with name = " + methodName);
 
-            foreach (CustomSkillAbilityBase skillAbility in skillBundle.customAbilityDict[id])
+            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(instanceId)) return;
+            if (!skillBundle.customAbilityTable.TryGetValue(instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return;
+            CustomVanillaAbilityMain.Instance.Log.LogInfo("Processing abilities from method with name = " + methodName);
+
+            foreach (CustomAbilityBase ability in abilityList)
             {
-                if (skillAbility is not T realAbility) continue;
+                if (ability is not T realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                __result += abilityCheck(realAbility);
+                try { __result += abilityCheck(realAbility); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
 
-        public static void ProcessPatchFloatLogic<T>(string dictKey, int id, string methodName,  Func<T, float> abilityCheck, out float __result) where T : CustomAbilityBase
+        public static void ProcessPatchFloatLogic<T>(string dictKey, int instanceId, object instance, string methodName,  Func<T, float> abilityCheck, out float __result) where T : CustomAbilityBase
         {
             __result = 0;
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(id)) return;
+            CustomVanillaAbilityMain.Instance.Log.LogInfo("Processing float with name = " + methodName);
 
-            foreach (CustomSkillAbilityBase skillAbility in skillBundle.customAbilityDict[id])
+            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(instanceId)) return;
+            if (!skillBundle.customAbilityTable.TryGetValue(instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return;
+
+            foreach (CustomAbilityBase ability in abilityList)
             {
-                if (skillAbility is not T realAbility) continue;
+                if (ability is not T realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                __result += abilityCheck(realAbility);
+                try {__result += abilityCheck(realAbility); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
 
-        public static void ProcessPatchVoidLogic<T>(string dictKey, int id, string methodName, Action<T> triggerTiming) where T : CustomAbilityBase
+        public static void ProcessPatchVoidLogic<T>(string dictKey, int instanceId, object instance, string methodName, Action<T> triggerTiming) where T : CustomAbilityBase
         {
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(id)) return;
+            CustomVanillaAbilityMain.Instance.Log.LogInfo("Processing void with name = " + methodName);
 
-            foreach (CustomAbilityBase skillAbility in skillBundle.customAbilityDict[id])
+            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(dictKey, out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(instanceId)) return;
+            if (!skillBundle.customAbilityTable.TryGetValue(instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return;
+
+            foreach (CustomAbilityBase ability in abilityList)
             {
-                if (skillAbility is not T realAbility) continue;
+                if (ability is not T realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
                 triggerTiming(realAbility);
             }
         }
+        */
     }
 }

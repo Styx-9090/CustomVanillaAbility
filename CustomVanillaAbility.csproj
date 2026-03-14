@@ -26,7 +26,7 @@
 			https://nuget.bepinex.dev/v3/index.json;
 			https://nuget.samboy.dev/v3/index.json
 		</RestoreAdditionalProjectSources>
-		<LimbusCompanyFolder>D:\Zwei</LimbusCompanyFolder>
+		<LimbusCompanyFolder>C:\Users\titou\Downloads\Lethe</LimbusCompanyFolder>
 	</PropertyGroup>
 
 	<!-- ~~~~~ ASSEMBLY REFERENCES ~~~~~ -->

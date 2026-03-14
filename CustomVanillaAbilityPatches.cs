@@ -3,7 +3,7 @@ using HarmonyLib;
 using Lethe.Patches;
 using SimpleJSON;
 using System;
-using System.Linq;
+using static Il2CppSystem.Net.NetEventSource;
 
 namespace CustomVanillaAbility
 {
@@ -13,864 +13,2246 @@ namespace CustomVanillaAbility
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void Postfix_Data_LoadCustomLocale(LOCALIZE_LANGUAGE lang)
         {
-            CustomVanillaAbilityMain main = CustomVanillaAbilityMain.Instance;
+            var main = CustomVanillaAbilityMain.Instance;
 
+            bool skillFlag = main.customAbilityDict.TryGetValue("skill", out var skillBundle) && skillBundle.availableState;
+            bool coinFlag = main.customAbilityDict.TryGetValue("coin", out var coinBundle) && coinBundle.availableState;
 
-            //Skills and Coins
-            bool skillFlag = main.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle skillBundle);
-            bool coinFlag = main.customAbilityDict.TryGetValue("coin", out CustomAbilityBundle coinBundle);
+            if (!skillFlag && !coinFlag) return;
 
-            if (skillFlag || coinFlag)
+            skillBundle?.SafeClean();
+            coinBundle?.SafeClean();
+
+            JSONArray skillJsonNodes = null;
+            if (skillFlag && coinFlag)
             {
-                if (skillFlag) skillBundle.SafeClean();
-                if (coinFlag) coinBundle.SafeClean();
-
-                if (skillFlag && coinFlag)
-                {
-                    System.Collections.Generic.HashSet<string> skillSpecialCheck = new();
-                    skillSpecialCheck.UnionWith(skillBundle.abilityLookup);
-                    skillSpecialCheck.UnionWith(coinBundle.abilityLookup);
-
-                    main.ScanModFiles(main.skillPath, skillSpecialCheck, out System.Collections.Generic.HashSet<int> outSkillHash);
-
-                    skillBundle.affectedLookup = outSkillHash;
-                    coinBundle.affectedLookup = outSkillHash;
-                }
-                else if (skillFlag && !coinFlag) main.ScanModFiles(main.skillPath, skillBundle.abilityLookup, out skillBundle.affectedLookup);
-                else main.ScanModFiles(main.skillPath, coinBundle.abilityLookup, out coinBundle.affectedLookup);
+                var combined = new System.Collections.Generic.HashSet<string>(skillBundle.abilityLookup);
+                combined.UnionWith(coinBundle.abilityLookup);
+                main.ScanModFiles(main.skillPath, combined, out skillJsonNodes);
             }
+            else if (skillFlag) main.ScanModFiles(main.skillPath, skillBundle.abilityLookup, out skillJsonNodes);
+            else main.ScanModFiles(main.skillPath, coinBundle.abilityLookup, out skillJsonNodes);
+
+            foreach (JSONNode node in skillJsonNodes)
+            {
+                JSONArray skillDataArray = node["skillData"]?.AsArray;
+                if (skillDataArray == null) continue;
+
+                var id = node["id"];
+
+                foreach (JSONNode skillData in skillDataArray)
+                {
+                    if (skillFlag)
+                    {
+                        JSONArray abilityList = skillData["abilityScriptList"]?.AsArray;
+                        if (abilityList != null)
+                        {
+                            foreach (JSONNode ability in abilityList)
+                            {
+                                var name = ability["scriptName"];
+
+                                if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, skillBundle.abilityLookup)) continue;
+
+                                skillBundle.affectedLookup.Add(id);
+                                break;
+                            }
+                        }
+                    }
+
+                    if (coinFlag)
+                    {
+                        JSONArray coinList = skillData["coinList"]?.AsArray;
+                        if (coinList == null) continue;
+
+                        foreach (JSONNode coin in coinList)
+                        {
+                            JSONArray abilityList = coin["abilityScriptList"]?.AsArray;
+                            if (abilityList == null) continue;
+
+                            foreach (JSONNode ability in abilityList)
+                            {
+                                var name = ability["scriptName"];
+                                if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, coinBundle.abilityLookup)) continue;
+
+                                coinBundle.affectedLookup.Add(id);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        static bool ContainsAny(string value, System.Collections.Generic.HashSet<string> lookup)
+        {
+            foreach (var s in lookup) if (value.Contains(s)) return true;
+            return false;
         }
     }
 
 
     public static class CustomVanillaAbilityPatches_SkillModel
     {
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void Init_Postfix(SkillModel __instance)
+        public static CustomAbilityBundle _skillBundle = new CustomAbilityBundle();
+
+        public static void SafelyExitSkillInit(SkillModel __instance)
         {
+            CustomVanillaAbilityMain main = CustomVanillaAbilityMain.Instance;
+
             if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle bundle)) return;
 
-            int skillId = __instance.GetID();
-            if (!bundle.affectedLookup.Contains(skillId)) return;
-
-            int skillKey = __instance.GetID();
-            if (bundle.customAbilityDict.ContainsKey(skillKey)) return;
+            if (!bundle.affectedLookup.Contains(__instance.GetID())) return;
+            if (bundle.customAbilityTable.TryGetValue(__instance, out _)) return;
 
             System.Collections.Generic.List<CustomAbilityBase> newAbilities = new System.Collections.Generic.List<CustomAbilityBase>();
             int baseIndex = __instance.GetAbilityList().Count;
 
             foreach (AbilityData abilityData in __instance._skillData.abilityScriptList)
             {
-                string scriptName = bundle.abilityLookup.FirstOrDefault(x => abilityData.scriptName.Contains(x));
+                string scriptName = null;
+
+                foreach (var lookup in bundle.abilityLookup)
+                {
+                    if (!abilityData.scriptName.Contains(lookup)) continue;
+                    scriptName = lookup;
+                    break;
+                }
+
                 if (scriptName == null) continue;
 
-                if (!bundle.abilityClassDict.TryGetValue(scriptName, out System.Type template)) continue;
+                if (!bundle.abilityClassDict.TryGetValue("SkillAbility_" + scriptName, out System.Type template)) continue;
                 CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(template);
 
                 int idx = baseIndex + newAbilities.Count + 1;
                 ability.Init(__instance, scriptName, abilityData.Value, idx, abilityData.TurnLimit, abilityData.BuffData);
                 if (abilityData.ConditionalData != null) ability.AttachConditionalData(abilityData.ConditionalData);
-                if (abilityData.TurnLimit != 0)  ability.InitLimitedActivateCountData(abilityData.TurnLimit);
+                if (abilityData.TurnLimit != 0) ability.InitLimitedActivateCountData(abilityData.TurnLimit);
 
                 newAbilities.Add(ability);
             }
-            bundle.customAbilityDict.Add(skillKey, newAbilities);
+            bundle.customAbilityTable.Add(__instance, newAbilities);
+
+            if (_skillBundle != bundle) _skillBundle = bundle;
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init), new Type[] { })]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryHigh)]
+        private static void Init_Postfix(SkillModel __instance)
+        {
+            try { SafelyExitSkillInit(__instance); }
+            catch (System.Exception) { }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanTeamKillOnStableOverclock))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanTeamKillOnStableOverclock_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanTeamKillOnStableOverclock", ability => ability.CanTeamKillOnStableOverclock(action), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IgnoreDefenseSkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.CanTeamKillOnStableOverclock(action))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsShow))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsShow_Postfix(SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsShow", ability => !ability.IsShow(), out __result);
+            if (__result == false) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsShow);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (!realAbility.IsShow())
+                    {
+                        __result = false;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IgnoreDefenseSkill))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IgnoreDefenseSkill_Postfix(BattleActionModel action, BattleUnitModel target, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IgnoreDefenseSkill", ability => ability.IgnoreDefenseSkill(action, target), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IgnoreDefenseSkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IgnoreDefenseSkill(action, target))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsActionable))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsActionable_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsActionable", ability => ability.IsActionable(action), out __result);
+            if (__result == false) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsActionable);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (!realAbility.IsActionable(action))
+                    {
+                        __result = false;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsPanicBlock))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsPanicBlock_Postfix(SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsPanicBlock", ability => ability.IsPanicBlock(), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsPanicBlock);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsPanicBlock())
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsSkillAbsorbingThisDamage))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsSkillAbsorbingThisDamage_Postfix(SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsSkillAbsorbingThisDamage", ability => ability.IsSkillAbsorbingThisDamage(), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsSkillAbsorbingThisDamage);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsSkillAbsorbingThisDamage())
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanUseSkill))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanUseSkill_Postfix(BattleUnitModel actor, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanUseSkill", ability => ability.CanUseSkill(actor), out __result);
+            if (__result == false) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanUseSkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (!realAbility.CanUseSkill(actor))
+                    {
+                        __result = false;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanDealTarget))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanDealTarget_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanDealTarget", ability => ability.CanDealTarget(action, target, coin), out __result);
+            if (__result == false) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanDealTarget);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (!realAbility.CanDealTarget(action, target, coin))
+                    {
+                        __result = false;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetPrimeTargets))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetPrimeTargets_Postfix(BattleActionModel action, SkillModel __instance, ref Il2CppSystem.Collections.Generic.List<PrimeTargetData> __result)
         {
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle skillBundle) || !skillBundle.affectedLookup.Contains(__instance.GetID())) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetPrimeTargets);
 
-            foreach (CustomAbilityBase skillAbility in skillBundle.customAbilityDict[__instance.GetID()])
+            foreach (CustomAbilityBase ability in abilityList)
             {
-                if (skillAbility is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains("GetPrimeTargets")) continue;
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                System.Collections.Generic.List<PrimeTargetData> primeTargetData = realAbility.GetPrimeTargets(action);
-                if (primeTargetData != null && primeTargetData.Count > 0)
+                try
                 {
-                    __result = primeTargetData.ToIl2Cpp();
-                    return;
+                    System.Collections.Generic.List<PrimeTargetData> primeTargetData = realAbility.GetPrimeTargets(action);
+                    if (primeTargetData != null && primeTargetData.Count > 0)
+                    {
+                        __result = primeTargetData.ToIl2Cpp();
+                        return;
+                    }
                 }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.AttackByMpDmgRatherThanHpDmg))]
-        [HarmonyPostfix]
-        private static void AttackByMpDmgRatherThanHpDmg_Postfix(BattleActionModel action, CoinModel coin, int resultDmg, SkillModel __instance, ref bool __result)
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void AttackByMpDmgRatherThanHpDmg_Postfix(BattleActionModel action, CoinModel coin, int resultDmg, BattleUnitModel target, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "AttackByMpDmgRatherThanHpDmg", ability => ability.AttackByMpDmgRatherThanHpDmg(action, coin, resultDmg), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.AttackByMpDmgRatherThanHpDmg);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.AttackByMpDmgRatherThanHpDmg(action, coin, resultDmg, target))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockLoseBuffByReactWithAction))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void BlockLoseBuffByReactWithAction_Postfix(BattleActionModel action, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD keyword, bool? isCritical, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BlockLoseBuffByReactWithAction", ability => ability.BlockLoseBuffByReactWithAction(action, keyword, isCritical), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BlockLoseBuffByReactWithAction);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.BlockLoseBuffByReactWithAction(action, keyword, isCritical))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockGivingBuff))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void BlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BlockGivingBuff", ability => ability.BlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BlockGivingBuff);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.BlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.ExpectedBlockGivingBuff))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void ExpectedBlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "ExpectedBlockGivingBuff", ability => ability.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.ExpectedBlockGivingBuff);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillLevelAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetSkillLevelAdder_Postfix(BattleActionModel action, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetSkillLevelAdder", ability => ability.GetSkillLevelAdder(action), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetSkillLevelAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetSkillLevelAdder(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillPowerAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, Il2CppSystem.Collections.Generic.List<CoinModel> coins, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetSkillPowerAdder", ability => ability.GetSkillPowerAdder(action, rollType), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetSkillPowerAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetSkillPowerAdder(action, rollType); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedSkillPowerAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetExpectedSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedSkillPowerAdder", ability => ability.GetExpectedSkillPowerAdder(action, rollType, expectedTargetSinActionOrNull), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedSkillPowerAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedSkillPowerAdder(action, rollType, expectedTargetSinActionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetEvadeSkillPowerAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetEvadeSkillPowerAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetEvadeSkillPowerAdder", ability => ability.GetEvadeSkillPowerAdder(evadeAction, attackerAction), out __result);
-        }
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetEvadeSkillPowerAdder);
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedEvadeSkillPowerAdder))]
-        [HarmonyPostfix]
-        private static void GetExpectedEvadeSkillPowerAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedEvadeSkillPowerAdder", ability => ability.GetExpectedEvadeSkillPowerAdder(evadeAction, attackerAction), out __result);
-        }
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinScaleAdder))]
-        [HarmonyPostfix]
-        private static void GetCoinScaleAdder_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref int __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCoinScaleAdder", ability => ability.GetCoinScaleAdder(action, coin), out __result);
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedCoinScaleAdder))]
-        [HarmonyPostfix]
-        private static void GetExpectedCoinScaleAdder_Postfix(BattleActionModel action, CoinModel coin, SinActionModel targetSinActionOrNull, SkillModel __instance, ref int __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedCoinScaleAdder", ability => ability.GetExpectedCoinScaleAdder(action, coin, targetSinActionOrNull), out __result);
+                try { __result += realAbility.GetEvadeSkillPowerAdder(evadeAction, attackerAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillPowerResultAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetSkillPowerResultAdder_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, CoinModel coinOrNull, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetSkillPowerResultAdder", ability => ability.GetSkillPowerResultAdder(action, timing), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetSkillPowerResultAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetSkillPowerResultAdder(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetEvadeCoinScaleAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetEvadeCoinScaleAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetEvadeCoinScaleAdder", ability => ability.GetEvadeCoinScaleAdder(evadeAction, attackerAction), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetEvadeCoinScaleAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetEvadeCoinScaleAdder(evadeAction, attackerAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedEvadeCoinScaleAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetExpectedEvadeCoinScaleAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedEvadeCoinScaleAdder", ability => ability.GetExpectedEvadeCoinScaleAdder(evadeAction, attackerAction), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedEvadeCoinScaleAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedEvadeCoinScaleAdder(evadeAction, attackerAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedSkillPowerResultAdder))]
-        [HarmonyPostfix]
-        private static void GetExpectedSkillPowerResultAdder_Postfix(BattleActionModel action, BattleUnitModel expectedTarget, SkillModel __instance, ref int __result)
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetExpectedSkillPowerResultAdder_Postfix(BattleActionModel action, BattleUnitModel expectedTargetOrNull, SinActionModel expectedTargetSinActionOrNull, BattleActionModel expectedOppoActionOrNull, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedSkillPowerResultAdder", ability => ability.GetExpectedSkillPowerResultAdder(action, expectedTarget), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedSkillPowerResultAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedSkillPowerResultAdder(action, expectedTargetOrNull, expectedTargetSinActionOrNull, expectedOppoActionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetParryingResultAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetParryingResultAdder", ability => ability.GetParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetParryingResultAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedParryingResultAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetExpectedParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoActionOrNull, int oppoResult, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedParryingResultAdder", ability => ability.GetExpectedParryingResultAdder(actorAction, actorResult, oppoActionOrNull, oppoResult), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedParryingResultAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedParryingResultAdder(actorAction, actorResult, oppoActionOrNull, oppoResult); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetOpponentParryingResultAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetOpponentParryingResultAdder", ability => ability.GetOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetOpponentParryingResultAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedOpponentParryingResultAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetExpectedOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedOpponentParryingResultAdder", ability => ability.GetExpectedOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedOpponentParryingResultAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackDmgMultiplier))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, SkillModel __instance, ref float __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAttackDmgMultiplier", ability => ability.GetAttackDmgMultiplier(action, coin, target, isCritical), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetAttackDmgMultiplier);
+
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult *= realAbility.GetAttackDmgMultiplier(action, coin, target, isCritical); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedAttackDmgMultiplier))]
-        [HarmonyPostfix]
-        private static void GetExpectedAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SkillModel __instance, ref float __result)
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetExpectedAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SinActionModel targetSinActionOrNull, SkillModel __instance, ref float __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedAttackDmgMultiplier", ability => ability.GetExpectedAttackDmgMultiplier(action, targetOrNull, coin), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedAttackDmgMultiplier);
+
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult *= realAbility.GetExpectedAttackDmgMultiplier(action, targetOrNull, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackDmgAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAttackDmgAdder", ability => ability.GetAttackDmgAdder(action, target), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetAttackDmgAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetAttackDmgAdder(action, target); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedAttackDmgAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetExpectedAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedAttackDmgAdder", ability => ability.GetExpectedAttackDmgAdder(action, targetOrNull), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedAttackDmgAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedAttackDmgAdder(action, targetOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackHpDmgAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAttackHpDmgAdder", ability => ability.GetAttackHpDmgAdder(target), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetAttackHpDmgAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetAttackHpDmgAdder(target); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedAttackHpDmgAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetExpectedAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetExpectedAttackHpDmgAdder", ability => ability.GetExpectedAttackHpDmgAdder(target), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetExpectedAttackHpDmgAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetExpectedAttackHpDmgAdder(target); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCriticalChanceMultiplier))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetCriticalChanceMultiplier_Postfix(BattleActionModel action, SkillModel __instance, ref float __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCriticalChanceMultiplier", ability => ability.GetCriticalChanceMultiplier(action), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetCriticalChanceMultiplier);
+
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult *= realAbility.GetCriticalChanceMultiplier(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCriticalChanceAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetCriticalChanceAdder_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref float __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCriticalChanceAdder", ability => ability.GetCriticalChanceAdder(action, coin), out __result);
-        }
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetCriticalChanceAdder);
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteCriticalResult))]
-        [HarmonyPostfix]
-        private static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, ref bool? overwirteCriticalResult, SkillModel __instance, ref bool __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OverwriteCriticalResult", ability => ability.OverwriteCriticalResult(action, coin, tempCritical, out bool? overwirteCriticalResult), out __result);
-        }
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(UnitModel), typeof(float) })]
-        [HarmonyPostfix]
-        private static void GetCoinProb_UnitModel_Postfix(UnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCoinProb", ability => ability.GetCoinProb(defaultProb), out __result);
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(BattleUnitModel), typeof(float) })]
-        [HarmonyPostfix]
-        private static void GetCoinProb_BattleUnitModel_Postfix(BattleUnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetCoinProb", ability => ability.GetCoinProb(defaultProb), out __result);
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBuffStackAdder))]
-        [HarmonyPostfix]
-        private static void GetGiveBuffStackAdder_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack, SkillModel __instance, ref int __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetGiveBuffStackAdder", ability => ability.GetBuffStackAdder(action, coinOrNull, target, keyword, stack), out __result);
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetUseBuffTurnAdder))]
-        [HarmonyPostfix]
-        private static void GetUseBuffTurnAdder_Postfix(BattleActionModel action, int turn, BUFF_UNIQUE_KEYWORD buf, SkillModel __instance, ref int __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetUseBuffTurnAdder", ability => ability.GetUseBuffTurnAdder(action, turn, buf), out __result);
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBuffTurnAdder))]
-        [HarmonyPostfix]
-        private static void GetGiveBuffTurnAdder_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int turn, SkillModel __instance, ref int __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetGiveBuffTurnAdder", ability => ability.GetBuffTurnAdder(action, target, keyword, turn), out __result);
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeAttack))]
-        [HarmonyPostfix]
-        private static void BeforeAttack_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeAttack", ability => ability.BeforeAttack(action, timing));
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsRetreatSkill))]
-        [HarmonyPostfix]
-        private static void IsRetreatSkill_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
-        {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsRetreatSkill", ability => ability.IsRetreatSkill(action), out __result);
+                try { tempResult += realAbility.GetCriticalChanceAdder(action, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
         }
 
         /*
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteTargetableList))]
-        [HarmonyPostfix]
-        private static void OverwriteTargetableList_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<SinActionModel> targetableSlotListOrNull, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targetableUnitListOrNull, Il2CppSystem.Collections.Generic.List<SinActionModel> addedSlotListOrNull)
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteCriticalResult))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, SkillModel __instance, ref bool __result, out bool? overwirteCriticalResult)
         {
+            overwirteCriticalResult = false;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OverwriteCriticalResult);
 
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try 
+                { 
+                    if (realAbility.OverwriteCriticalResult(action, coin, tempCritical, out bool? newOverwriteResult))
+                    {
+                        if (newOverwriteResult.HasValue)
+                        {
+                            overwirteCriticalResult = newOverwriteResult;
+                            return;
+                        }
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
         */
 
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(UnitModel), typeof(float) })]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetCoinProb_UnitModel_Postfix(UnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetCoinProb);
+
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult += realAbility.GetCoinProb(defaultProb); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(BattleUnitModel), typeof(float) })]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetCoinProb_BattleUnitModel_Postfix(BattleUnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetCoinProb);
+
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult += realAbility.GetCoinProb(defaultProb); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBuffStackAdder))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetGiveBuffStackAdder_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack, SkillModel __instance, ref int __result)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetGiveBuffStackAdder);
+
+            int tempResult = stack;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult = realAbility.GetBuffStackAdder(action, coinOrNull, target, keyword, tempResult); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetUseBuffTurnAdder))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetUseBuffTurnAdder_Postfix(BattleActionModel action, int turn, BUFF_UNIQUE_KEYWORD buf, SkillModel __instance, ref int __result)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetUseBuffTurnAdder);
+
+            int tempResult = turn;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult = realAbility.GetUseBuffTurnAdder(action, tempResult, buf); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBuffTurnAdder))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void GetGiveBuffTurnAdder_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int turn, SkillModel __instance, ref int __result)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetGiveBuffTurnAdder);
+
+            int tempResult = turn;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult = realAbility.GetBuffTurnAdder(action, target, keyword, tempResult); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeAttack))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void BeforeAttack_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BeforeAttack);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.BeforeAttack(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsRetreatSkill))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void IsRetreatSkill_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
+        {
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsRetreatSkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsRetreatSkill(action))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAdditionalActivateCountForDefenseSkill))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetAdditionalActivateCountForDefenseSkill_Postfix(BattleUnitModel owner, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetAdditionalActivateCountForDefenseSkill", ability => ability.GetAdditionalActivateCountForDefenseSkill(owner), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetAdditionalActivateCountForDefenseSkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetAdditionalActivateCountForDefenseSkill(owner); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.ChangeAttackDamage))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void ChangeAttackDamage_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "ChangeAttackDamage", ability => ability.ChangeAttackDamage(action, target, coin, resultDmg, isCritical, timing), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.ChangeAttackDamage);
+
+            int tempResult = resultDmg;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult = realAbility.ChangeAttackDamage(action, target, coin, tempResult, isCritical, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetGiveBsGaugeUpMultiplier))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void GetGiveBsGaugeUpMultiplier_Postfix(bool onGiveExplosion, BattleUnitModel target, BattleActionModel action, CoinModel coinOrNull, SkillModel __instance, ref float __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchFloatLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "GetGiveBsGaugeUpMultiplier", ability => ability.GetGiveBsGaugeUpMultiplier(onGiveExplosion, target, action, coinOrNull), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetGiveBsGaugeUpMultiplier);
+
+            float tempResult = __result;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { tempResult *= realAbility.GetGiveBsGaugeUpMultiplier(onGiveExplosion, target, action, coinOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            __result = tempResult;
         }
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteSkillIconID))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OverwriteSkillIconID_Postfix(SkillModel __instance, ref string __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchStringLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OverwriteSkillIconID", ability => ability.OverwriteSkillIconID(), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OverwriteSkillIconID);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try 
+                { 
+                    string newResult = realAbility.OverwriteSkillIconID();
+                    if (!string.IsNullOrEmpty(newResult))
+                    {
+                        __result = newResult;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
+        */
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnUseCoinConsume))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnUseCoinConsume_Postfix(BattleActionModel action, CoinModel coin, BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnUseCoinConsume", ability => ability.OnUseCoinConsume(action, coin, keyword, stack, turn, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnUseCoinConsume);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnUseCoinConsume(action, coin, keyword, stack, turn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.RightBeforeGiveBuffBySkill))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void RightBeforeGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "RightBeforeGiveBuffBySkill", ability => ability.RightBeforeGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, activeRound, timing, isCritical));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.RightBeforeGiveBuffBySkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightBeforeGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, activeRound, timing, isCritical); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.RightAfterGiveBuffBySkill))]
-        [HarmonyPostfix]
-        private static void RightAfterGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, SkillModel __instance)
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void RightAfterGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, CoinModel coinOrNull, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "RightAfterGiveBuffBySkill", ability => ability.RightAfterGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, resultStack, resultTurn, activeRound, timing, isCritical));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.RightAfterGiveBuffBySkill);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightAfterGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, resultStack, resultTurn, activeRound, timing, isCritical); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBattleStart))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnBattleStart_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBattleStart", ability => ability.OnBattleStart(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnBattleStart);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBattleStart(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnRoundEnd))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnRoundEnd_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnRoundEnd", ability => ability.OnRoundEnd(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnRoundEnd);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRoundEnd(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeTurn))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnBeforeTurn_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeTurn", ability => ability.OnBeforeTurn(action));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnBeforeTurn);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBeforeTurn(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeDefense))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnBeforeDefense_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeDefense", ability => ability.OnBeforeDefense(action));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnBeforeDefense);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBeforeDefense(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartTurn_BeforeLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnStartTurn_BeforeLog_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartTurn_BeforeLog", ability => ability.OnStartTurn_BeforeLog(action, targets.ToSystem(), timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnStartTurn_BeforeLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartTurn_BeforeLog(action, targets.ToSystem(), timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnTryEvade))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnTryEvade_Postfix(BattleActionModel action, BattleActionModel attackerAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnTryEvade", ability => ability.OnTryEvade(action, attackerAction, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnTryEvade);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTryEvade(action, attackerAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.AfterRecheckTargetList))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void AfterRecheckTargetList_Postfix(BattleActionModel action, bool valid, bool mainTargetAlive, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "AfterRecheckTargetList", ability => ability.AfterRecheckTargetList(action, valid, mainTargetAlive));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.AfterRecheckTargetList);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.AfterRecheckTargetList(action, valid, mainTargetAlive); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartDuel))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnStartDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartDuel", ability => ability.OnStartDuel(selfAction, oppoAction, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnStartDuel);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartDuel(selfAction, oppoAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeParryingOnce))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnBeforeParryingOnce_Postfix(BattleActionModel ownerAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeParryingOnce", ability => ability.OnBeforeParryingOnce(ownerAction, oppoAction));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnBeforeParryingOnce);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBeforeParryingOnce(ownerAction, oppoAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBeforeParryingOnce_AfterLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnBeforeParryingOnce_AfterLog_Postfix(BattleActionModel ownerAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBeforeParryingOnce_AfterLog", ability => ability.OnBeforeParryingOnce(ownerAction, oppoAction));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnBeforeParryingOnce_AfterLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBeforeParryingOnce(ownerAction, oppoAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDuelAfter_BeforeLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnDuelAfter_BeforeLog_Postfix(SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDuelAfter_BeforeLog", ability => ability.OnDuelAfter_BeforeLog());
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnDuelAfter_BeforeLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDuelAfter_BeforeLog(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDuelAfter_AfterLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnDuelAfter_AfterLog_Postfix(SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDuelAfter_AfterLog", ability => ability.OnDuelAfter_AfterLog());
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnDuelAfter_AfterLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDuelAfter_AfterLog(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnWinParrying))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnWinParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnWinParrying", ability => ability.OnWinParrying(selfAction, oppoAction));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnWinParrying);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnWinParrying(selfAction, oppoAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnLoseParrying))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnLoseParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnLoseParrying", ability => ability.OnLoseParrying(selfAction, oppoAction));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnLoseParrying);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnLoseParrying(selfAction, oppoAction); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnWinDuel))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnWinDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, int parryingCount, BattleLog_Parrying lastLogOrNull, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnWinDuel", ability => ability.OnWinDuel(selfAction, oppoAction, timing, parryingCount, lastLogOrNull));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnWinDuel);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnWinDuel(selfAction, oppoAction, timing, parryingCount, lastLogOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnLoseDuel))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnLoseDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnLoseDuel", ability => ability.OnLoseDuel(selfAction, oppoAction, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnLoseDuel);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnLoseDuel(selfAction, oppoAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeBehaviour))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void BeforeBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeBehaviour", ability => ability.BeforeBehaviour(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BeforeBehaviour);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.BeforeBehaviour(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartBehaviour))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnStartBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartBehaviour", ability => ability.OnStartBehaviour(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnStartBehaviour);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartBehaviour(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCriticalIsActivated))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnCriticalIsActivated_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnCriticalIsActivated", ability => ability.OnCriticalIsActivated(action, coin, timing, affectKeywords.ConvertDictionary()));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnCriticalIsActivated);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnCriticalIsActivated(action, coin, timing, affectKeywords.ConvertDictionary()); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAttackConfirmed))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnAttackConfirmed_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing, bool isCritical, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAttackConfirmed", ability => ability.OnAttackConfirmed(action, target, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnAttackConfirmed);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAttackConfirmed(action, target, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeGiveAttackDamage))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void BeforeGiveAttackDamage_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool? isWinDuel, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeGiveAttackDamage", ability => ability.BeforeGiveAttackDamage(action, target, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BeforeGiveAttackDamage);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.BeforeGiveAttackDamage(action, target, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSucceedAttack))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnSucceedAttack_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnSucceedAttack", ability => ability.OnSucceedAttack(action, coin, target, finalDmg, realDmg, isCritical, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnSucceedAttack);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnSucceedAttack(action, coin, target, finalDmg, realDmg, isCritical, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSucceedEvade))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnSucceedEvade_Postfix(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnSucceedEvade", ability => ability.OnSucceedEvade(attackerAction, evadeAction, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnSucceedEvade);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnSucceedEvade(attackerAction, evadeAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnFailedEvade))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnFailedEvade_Postfix(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnFailedEvade", ability => ability.OnFailedEvade(attackerAction, evadeAction, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnFailedEvade);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnFailedEvade(attackerAction, evadeAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeCompleteCommand))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void BeforeCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, ref int newSkillID, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BeforeCompleteCommand", ability => ability.BeforeCompleteCommand(action, timing, out int newSkillID), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BeforeCompleteCommand);
+
+            bool tempResult = false;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.BeforeCompleteCommand(action, timing, out int newSkillIDFromAbility))
+                    {
+                        newSkillID = newSkillIDFromAbility;
+                        tempResult = true;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            if (tempResult) __result = tempResult;
         }
+        */
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCompleteCommand))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnCompleteCommand", ability => ability.OnCompleteCommand(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnCompleteCommand);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnCompleteCommand(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartCoin))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnStartCoin_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartCoin", ability => ability.OnStartCoin(action, coin));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnStartCoin);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartCoin(action, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndCoin_BeforeLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndCoin_BeforeLog", ability => ability.OnEndCoin_BeforeLog(action, coin, isCritical, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnEndCoin_BeforeLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndCoin_BeforeLog(action, coin, isCritical, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndCoin_AfterLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnEndCoin_AfterLog_Postfix(BattleActionModel action, CoinModel coin, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndCoin_AfterLog", ability => ability.OnEndCoin_AfterLog(action, coin, isCritical, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnEndCoin_AfterLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndCoin_AfterLog(action, coin, isCritical, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndAttack))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnEndAttack_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndAttack", ability => ability.OnEndAttack(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnEndAttack);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndAttack(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnGiveBsGaugeUp))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnGiveBsGaugeUp_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int value, BATTLE_EVENT_TIMING timing, bool onExplosion, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnGiveBsGaugeUp", ability => ability.OnGiveBsGaugeUp(action, target, value, timing, onExplosion));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnGiveBsGaugeUp);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnGiveBsGaugeUp(action, target, value, timing, onExplosion); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndBehaviour))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnEndBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndBehaviour", ability => ability.OnEndBehaviour(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnEndBehaviour);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndBehaviour(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndBehave_Refresh))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnEndBehave_Refresh_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndBehave_Refresh", ability => ability.OnEndBehave_Refresh(action));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnEndBehave_Refresh);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndBehave_Refresh(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndTurn))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnEndTurn_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnEndTurn", ability => ability.OnEndTurn(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnEndTurn);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndTurn(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.DoneWithAction))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void DoneWithAction_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "DoneWithAction", ability => ability.DoneWithAction(action));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.DoneWithAction);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.DoneWithAction(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDiscarded))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnDiscarded_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDiscarded", ability => ability.OnDiscarded(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnDiscarded);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDiscarded(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.StackNextTurnAggroAdder))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void StackNextTurnAggroAdder_Postfix(SkillModel __instance, ref int __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchIntLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "StackNextTurnAggroAdder", ability => ability.StackNextTurnAggroAdder(), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.StackNextTurnAggroAdder);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.StackNextTurnAggroAdder(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverrideCanDuel))]
-        [HarmonyPostfix]
-        private static void OverwriteCanDuel_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result, BattleActionModel opponentActionOrNull = null)
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void OverwriteCanDuel_Postfix(bool value, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OverwriteCanDuel", ability => ability.OverwriteCanDuel(action, out bool canDuel, opponentActionOrNull), out __result);
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OverrideCanDuel);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OverwriteCanDuel(value); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
+        */
+
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanBeChangedTarget))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanBeChangedTarget_Postfix(BattleActionModel ownerAction, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanBeChangedTarget", ability => ability.CanBeChangedTarget(ownerAction, out bool canChangedTarget), out __result);
+            if (__result == false) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanBeChangedTarget);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (!realAbility.CanBeChangedTarget(ownerAction, out bool canChangedTarget))
+                    {
+                        __result = false;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanChangeMainTargetRegardlessSpeed))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanChangeMainTargetRegardlessSpeed_Postfix(BattleActionModel otherAction, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanChangeMainTargetRegardlessSpeed", ability => ability.CanBeChangedTargetIgnoreSpeed(), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanChangeMainTargetRegardlessSpeed);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.CanChangeMainTargetRegardlessSpeed(otherAction))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanBeChangedTargetIgnoreSpeed))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanBeChangedTargetIgnoreSpeed_Postfix(BattleActionModel action, BattleActionModel otherAction, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanBeChangedTargetIgnoreSpeed", ability => ability.CanBeChangedTargetIgnoreSpeed(), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanBeChangedTargetIgnoreSpeed);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.CanBeChangedTargetIgnoreSpeed(action, otherAction))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsDefenseSkillForOther))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsDefenseSkillForOther_Postfix(BattleUnitModel self, BattleUnitModel originTarget, BattleActionModel opponentActionOrNull, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsDefenseSkillForOther", ability => ability.IsDefenseSkillForOther(self, originTarget, opponentActionOrNull), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsDefenseSkillForOther);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsDefenseSkillForOther(self, originTarget, opponentActionOrNull))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanCheckErode))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void CanCheckErode_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanCheckErode", ability => ability.CanCheckErode(action), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanCheckErode);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.CanCheckErode(action))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsReusable))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsReusable_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsReusable", ability => ability.IsReusable(action), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsReusable);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsReusable(action))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsChangeable))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsChangeable_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsChangeable", ability => ability.IsChangeable(action), out __result);
+            if (__result == false) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsChangeable);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (!realAbility.IsChangeable(action))
+                    {
+                        __result = false;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockAddSinStock))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void BlockAddSinStock_Postfix(BattleActionModel action, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "BlockAddSinStock", ability => ability.BlockAddSinStock(action), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.BlockAddSinStock);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.BlockAddSinStock(action))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsBlockingTargetBurstBuffEffectReact))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsBlockingTargetBurstBuffEffectReact_Postfix(BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsBlockingTargetBurstBuffEffectReact", ability => ability.IsBlockingTargetBurstBuffEffectReact(target, stack, turn, selfAction, selfCoin, isCritical, timing), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsBlockingTargetBurstBuffEffectReact);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsBlockingTargetBurstBuffEffectReact(target, stack, turn, selfAction, selfCoin, isCritical, timing))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.IsBlockingTargetSinkingBuffEffectReact))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void IsBlockingTargetSinkingBuffEffectReact_Postfix(BattleUnitModel target, int stack, int turn, BattleActionModel selfAction, CoinModel selfCoin, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref bool __result)
         {
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "IsBlockingTargetSinkingBuffEffectReact", ability => ability.IsBlockingTargetSinkingBuffEffectReact(target, stack, turn, selfAction, selfCoin, isCritical, timing), out __result);
+            if (__result == true) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.IsBlockingTargetSinkingBuffEffectReact);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    if (realAbility.IsBlockingTargetSinkingBuffEffectReact(target, stack, turn, selfAction, selfCoin, isCritical, timing))
+                    {
+                        __result = true;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.CanRollCoin))]
-        [HarmonyPostfix]
-        private static void CanRollCoin_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref bool __result, out bool forceToEndSkill)
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        private static void CanRollCoin_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref bool __result, out Il2CppSystem.Collections.Generic.List<BUFF_UNIQUE_KEYWORD> lackOfBuffs, out bool forceToEndSkill)
         {
             forceToEndSkill = false;
-            CustomVanillaAbilityHelper.ProcessPatchBoolLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "CanRollCoin", ability => ability.CanRollCoin(action, coin, out bool forceToEndSkill), out __result);
+            lackOfBuffs = null;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.CanRollCoin);
+
+            bool tempResult = false;
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try 
+                { 
+                    if (realAbility.CanRollCoin(action, coin, out bool forceToEnd))
+                    {
+                        tempResult = true;
+                        if (forceToEnd) forceToEndSkill = true;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+            if (tempResult) __result = tempResult;
         }
+        */
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSkillChangedEgo))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnSkillChangedEgo_Postfix(BattleActionModel action, bool isOverClock, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnSkillChangedEgo", ability => ability.OnSkillChangedEgo(action, isOverClock, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnSkillChangedEgo);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnSkillChangedEgo(action, isOverClock, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnChangeSkillBeforeCompleteCommand))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnChangeSkillBeforeCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnChangeSkillBeforeCompleteCommand", ability => ability.OnChangeSkillBeforeCompleteCommand(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnChangeSkillBeforeCompleteCommand);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnChangeSkillBeforeCompleteCommand(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCancelAction))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnCancelAction_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnCancelAction", ability => ability.OnCancelAction(action));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnCancelAction);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnCancelAction(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnStartTurn_AfterLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnStartTurn_AfterLog_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnStartTurn_AfterLog", ability => ability.OnStartTurn_AfterLog(action, targets.ToSystem(), timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnStartTurn_AfterLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartTurn_AfterLog(action, targets.ToSystem(), timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAttackCanceledByAbility))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnAttackCanceledByAbility_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAttackCanceledByAbility", ability => ability.OnAttackCanceledByAbility(action, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnAttackCanceledByAbility);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAttackCanceledByAbility(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAfterParryingOnce_BeforeLog))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnAfterParryingOnce_BeforeLog_Postfix(PARRYING_RESULT reuslt, BattleActionModel ownerAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAfterParryingOnce_BeforeLog", ability => ability.OnAfterParryingOnce_BeforeLog(reuslt, ownerAction, oppoAction, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnAfterParryingOnce_BeforeLog);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAfterParryingOnce_BeforeLog(reuslt, ownerAction, oppoAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnKillTarget))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnKillTarget_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnKillTarget", ability => ability.OnKillTarget(action, coinOrNull, target, dmgSrcType, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnKillTarget);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnKillTarget(action, coinOrNull, target, dmgSrcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnBreakTarget))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnBreakTarget_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnBreakTarget", ability => ability.OnBreakTarget(action, coinOrNull, target, dmgSrcType, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnBreakTarget);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBreakTarget(action, coinOrNull, target, dmgSrcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnDestroyTargetPart))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnDestroyTargetPart_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel_Abnormality_Part target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnDestroyTargetPart", ability => ability.OnDestroyTargetPart(action, coinOrNull, target, dmgSrcType, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnDestroyTargetPart);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDestroyTargetPart(action, coinOrNull, target, dmgSrcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnAddCoinByAbility))]
-        [HarmonyPostfix]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnAddCoinByAbility_Postfix(BattleActionModel action, CoinModel newCoin, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            CustomVanillaAbilityHelper.ProcessPatchVoidLogic<CustomSkillAbilityBase>("skill", __instance.GetID(), "OnAddCoinByAbility", ability => ability.OnAddCoinByAbility(action, newCoin, timing));
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.OnAddCoinByAbility);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAddCoinByAbility(action, newCoin, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
-
-
     }
 }
