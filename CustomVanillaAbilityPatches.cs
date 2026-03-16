@@ -405,7 +405,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockLoseBuffByReactWithAction))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void BlockLoseBuffByReactWithAction_Postfix(BattleActionModel action, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD keyword, bool? isCritical, SkillModel __instance, ref bool __result)
+        private static void BlockLoseBuffByReactWithAction_Postfix(BattleActionModel action, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD keyword, Il2CppSystem.Nullable<bool> isCritical, SkillModel __instance, ref bool __result)
         {
             if (__result == true) return;
 
@@ -419,7 +419,7 @@ namespace CustomVanillaAbility
 
                 try
                 {
-                    if (realAbility.BlockLoseBuffByReactWithAction(action, keyword, isCritical))
+                    if (realAbility.BlockLoseBuffByReactWithAction(action, keyword, isCritical.Value))
                     {
                         __result = true;
                         return;
@@ -431,7 +431,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BlockGivingBuff))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void BlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, SkillModel __instance, ref bool __result)
+        private static void BlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, Il2CppSystem.Nullable<bool> isCritical, SkillModel __instance, ref bool __result)
         {
             if (__result == true) return;
 
@@ -445,7 +445,7 @@ namespace CustomVanillaAbility
 
                 try
                 {
-                    if (realAbility.BlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical))
+                    if (realAbility.BlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical.Value))
                     {
                         __result = true;
                         return;
@@ -457,7 +457,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.ExpectedBlockGivingBuff))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void ExpectedBlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, bool? isCritical, SkillModel __instance, ref bool __result)
+        private static void ExpectedBlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, Il2CppSystem.Nullable<bool> isCritical, SkillModel __instance, ref bool __result)
         {
             if (__result == true) return;
 
@@ -471,7 +471,7 @@ namespace CustomVanillaAbility
 
                 try
                 {
-                    if (realAbility.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical))
+                    if (realAbility.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical.Value))
                     {
                         __result = true;
                         return;
@@ -836,7 +836,7 @@ namespace CustomVanillaAbility
         /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteCriticalResult))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, SkillModel __instance, ref bool __result, out bool? overwirteCriticalResult)
+        private static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, SkillModel __instance, ref bool __result, out Il2CppSystem.Nullable<bool> overwirteCriticalResult)
         {
             overwirteCriticalResult = false;
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
@@ -849,7 +849,7 @@ namespace CustomVanillaAbility
 
                 try 
                 { 
-                    if (realAbility.OverwriteCriticalResult(action, coin, tempCritical, out bool? newOverwriteResult))
+                    if (realAbility.OverwriteCriticalResult(action, coin, tempCritical, out Il2CppSystem.Nullable<bool> newOverwriteResult))
                     {
                         if (newOverwriteResult.HasValue)
                         {
@@ -1021,7 +1021,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.ChangeAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void ChangeAttackDamage_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref int __result)
+        private static void ChangeAttackDamage_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, Il2CppSystem.Nullable<bool> isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance, ref int __result)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.ChangeAttackDamage);
@@ -1084,6 +1084,7 @@ namespace CustomVanillaAbility
         }
         */
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnUseCoinConsume))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnUseCoinConsume_Postfix(BattleActionModel action, CoinModel coin, BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing, SkillModel __instance)
@@ -1103,7 +1104,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.RightBeforeGiveBuffBySkill))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void RightBeforeGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, SkillModel __instance)
+        private static void RightBeforeGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int activeRound, BATTLE_EVENT_TIMING timing, Il2CppSystem.Nullable<bool> isCritical, SkillModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.RightBeforeGiveBuffBySkill);
@@ -1120,7 +1121,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.RightAfterGiveBuffBySkill))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void RightAfterGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, bool? isCritical, CoinModel coinOrNull, SkillModel __instance)
+        private static void RightAfterGiveBuffBySkill_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int originalStack, int originalTurn, int resultStack, int resultTurn, int activeRound, BATTLE_EVENT_TIMING timing, Il2CppSystem.Nullable<bool> isCritical, CoinModel coinOrNull, SkillModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.RightAfterGiveBuffBySkill);
@@ -1477,7 +1478,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.BeforeGiveAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void BeforeGiveAttackDamage_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool? isWinDuel, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance)
+        private static void BeforeGiveAttackDamage_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, Il2CppSystem.Nullable<bool> isWinDuel, bool isCritical, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BeforeGiveAttackDamage);
@@ -1494,7 +1495,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSucceedAttack))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void OnSucceedAttack_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
+        private static void OnSucceedAttack_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, Il2CppSystem.Nullable<bool> isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnSucceedAttack);
@@ -1571,6 +1572,7 @@ namespace CustomVanillaAbility
         }
         */
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnCompleteCommand))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
@@ -1607,7 +1609,7 @@ namespace CustomVanillaAbility
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnEndCoin_BeforeLog))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        private static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, bool isCritical, bool? isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
+        private static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, bool isCritical, Il2CppSystem.Nullable<bool> isWinDuel, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnEndCoin_BeforeLog);
@@ -2085,6 +2087,7 @@ namespace CustomVanillaAbility
         }
         */
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OnSkillChangedEgo))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         private static void OnSkillChangedEgo_Postfix(BattleActionModel action, bool isOverClock, BATTLE_EVENT_TIMING timing, SkillModel __instance)
@@ -2254,5 +2257,6 @@ namespace CustomVanillaAbility
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
+        */
     }
 }
