@@ -1,13 +1,15 @@
 ﻿using BepInEx;
 using BepInEx.Unity.IL2CPP;
+using CustomVanillaAbility.CustomClasses;
+using CustomVanillaAbility.FroggoCustomScripts;
+using CustomVanillaAbility.Patches;
+using CustomVanillaAbility.TestingClass;
 using HarmonyLib;
 using Lethe;
 using SimpleJSON;
 using System;
 using System.IO;
 using System.Linq;
-using CustomVanillaAbility.CustomClasses;
-using CustomVanillaAbility.TestingClass;
 using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility;
@@ -29,7 +31,8 @@ public class CustomVanillaAbilityMain : BasePlugin
 
     private Regex classNameRegex;
 
-    
+    public Type archiveSkillType;
+
     public override void Load()
     {
         Instance = this;
@@ -39,6 +42,7 @@ public class CustomVanillaAbilityMain : BasePlugin
         customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
         generalAffectedHash = new System.Collections.Generic.HashSet<int>();
         customAbilityDict.Add("skill", new CustomAbilityBundle());
+        archiveSkillType = typeof(CustomSkillAbilityBase);
 
 
         modHarmony = new Harmony(GUID);
@@ -46,6 +50,7 @@ public class CustomVanillaAbilityMain : BasePlugin
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
 
         RegisterCustomAbility<SkillAbility_StyxTesting>();
+        RegisterCustomAbility<SkillAbility_WhenBelowValueHPPercentageChangeSkill>();
     }
 
     public void RegisterCustomAbility<T>() where T : CustomAbilityBase
@@ -55,7 +60,7 @@ public class CustomVanillaAbilityMain : BasePlugin
         if (abilityType != null)
         {
             CustomAbilityBundle bundle = null;
-            if (abilityType.IsSubclassOf(typeof(CustomSkillAbilityBase)) ||  abilityType == typeof(CustomSkillAbilityBase)) bundle = customAbilityDict["skill"];
+            if (abilityType.IsSubclassOf(archiveSkillType) || abilityType == archiveSkillType) bundle = customAbilityDict["skill"];
 
             if (bundle == null || bundle.abilityClassDict.ContainsKey(abilityName)) return;
             bundle.abilityClassDict.Add(abilityName, abilityType);

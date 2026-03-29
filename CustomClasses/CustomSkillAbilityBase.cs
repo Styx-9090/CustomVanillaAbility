@@ -677,33 +677,39 @@ public abstract class CustomSkillAbilityBase : CustomActionAbilityBase
     //------------------------------------------------------------------------------------------//
 
 
-    protected void GiveBuff_BySkill(BattleUnitModel target, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, int stack, int turn, int activeRound, BATTLE_EVENT_TIMING timing, [Optional] CoinModel coinOrNull, [Optional] bool? isCritical)
+    protected void GiveBuff_BySkill(BattleUnitModel target, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, int stack, int turn, int activeRound, BATTLE_EVENT_TIMING timing, CoinModel coinOrNull = null, bool isCritical = false)
     {
+        BuffInfo buffInfo = target._buffDetail.GetActivatedBuff(bufKeyword, activeRound);
+        int originalStack = (buffInfo != null) ? buffInfo.GetStack() : 0;
+        int originalTurn = (buffInfo != null) ? buffInfo.GetTurn() : 0;
+
+        this.RightBeforeGiveBuffBySkill(action, target, bufKeyword, stack, turn, activeRound, timing, isCritical);
         this._reserveAbility.GiveBuff_BySkill(target, action, bufKeyword, stack, turn, activeRound, timing, coinOrNull, (Il2CppSystem.Nullable<bool>)isCritical);
+        this.RightAfterGiveBuffBySkill(action, target, bufKeyword, originalStack, originalTurn, originalStack + stack, originalTurn + turn, activeRound, timing, isCritical);
     }
 
     protected void UseBuffStack(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int stack, [Optional] int? overwriteStack)
     {
         this._reserveAbility.UseBuffStack(owner, action, bufKeyword, timing, stack, (Il2CppSystem.Nullable<int>)overwriteStack);
-        //this.OnUseBuffStackBySkill(owner, action, bufKeyword, timing, stack);
+        this.OnUseBuffStackBySkill(owner, action, bufKeyword, timing, stack);
     }
 
     protected void UseBuffAllStack(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, out int usedStack)
     {
         this._reserveAbility.UseBuffAllStack(owner, action, bufKeyword, timing, out usedStack);
-        //this.OnUseBuffStackBySkill(owner, action, bufKeyword, timing, usedStack);
+        this.OnUseBuffStackBySkill(owner, action, bufKeyword, timing, usedStack);
     }
 
     protected void UseBuffTurn(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, int turn)
     {
         this._reserveAbility.UseBuffTurn(owner, action, bufKeyword, timing, turn);
-        //this.OnUseBuffTurnBySkill(owner, action, bufKeyword, timing, turn);
+        this.OnUseBuffTurnBySkill(owner, action, bufKeyword, timing, turn);
     }
 
     protected void UseBuffAllTurn(BattleUnitModel owner, BattleActionModel action, BUFF_UNIQUE_KEYWORD bufKeyword, BATTLE_EVENT_TIMING timing, out int usedTurn)
     {
         this._reserveAbility.UseBuffAllTurn(owner, action, bufKeyword, timing, out usedTurn);
-        //this.OnUseBuffTurnBySkill(owner, action, bufKeyword, timing, usedTurn);
+        this.OnUseBuffTurnBySkill(owner, action, bufKeyword, timing, usedTurn);
     }
 
     protected void CopyCoinModelAndAddToListByIndex(BattleActionModel action, int idx, BATTLE_EVENT_TIMING timing)

@@ -20,6 +20,12 @@ namespace CustomVanillaAbility.TestingClass
             return TEST_BUFF;
         }
 
+        public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
+        {
+            base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
+            if (jsonValue != 0) TEST_BUFF = (int)jsonValue;
+        }
+
         protected int TEST_BUFF = 5;
     }
 }
