@@ -29,7 +29,7 @@ public class CustomVanillaAbilityMain : BasePlugin
     internal System.Collections.Generic.HashSet<int> generalAffectedHash;
     internal string skillPath;
 
-    private Regex classNameRegex;
+    //private Regex classNameRegex;
 
     public Type archiveSkillType;
 
@@ -37,10 +37,10 @@ public class CustomVanillaAbilityMain : BasePlugin
     {
         Instance = this;
         skillPath = @"custom_limbus_data\skill";
-        classNameRegex = new Regex(@"^(\w+Ability_)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        //classNameRegex = new Regex(@"^(\w+Ability_)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
-        generalAffectedHash = new System.Collections.Generic.HashSet<int>();
+        generalAffectedHash = [];
         customAbilityDict.Add("skill", new CustomAbilityBundle());
         archiveSkillType = typeof(CustomSkillAbilityBase);
 
@@ -49,14 +49,13 @@ public class CustomVanillaAbilityMain : BasePlugin
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
 
-        RegisterCustomAbility<SkillAbility_StyxTesting>();
-        RegisterCustomAbility<SkillAbility_WhenBelowValueHPPercentageChangeSkill>();
+        RegisterCustomAbility<SkillAbility_StyxTesting>("StyxTesting");
+        RegisterCustomAbility<SkillAbility_WhenBelowValueHPPercentageChangeSkill>("WhenBelowValueHPPercentageChangeSkill");
     }
 
-    public void RegisterCustomAbility<T>() where T : CustomAbilityBase
+    public void RegisterCustomAbility<T>(string abilityName) where T : CustomAbilityBase
     {
         System.Type abilityType = typeof(T);
-        string abilityName = abilityType.Name;
         if (abilityType != null)
         {
             CustomAbilityBundle bundle = null;
@@ -64,7 +63,7 @@ public class CustomVanillaAbilityMain : BasePlugin
 
             if (bundle == null || bundle.abilityClassDict.ContainsKey(abilityName)) return;
             bundle.abilityClassDict.Add(abilityName, abilityType);
-            bundle.abilityLookup.Add(classNameRegex.Replace(abilityName, ""));
+            bundle.abilityLookup.Add(abilityName);
             if (bundle.availableState == false) bundle.availableState = true;
         }
     }

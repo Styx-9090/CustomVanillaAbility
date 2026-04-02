@@ -6,7 +6,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
 {
     public class SkillModel_AtLessThanConditionalChangeSkill : CustomSkillAbility_ChangeSkillAtCondition
     {
-        public override void OnBattleStart(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        public override void OnBeforeTurn(BattleActionModel action)
         {
             if (selectedBuff == BUFF_UNIQUE_KEYWORD.None) return;
 
