@@ -58,7 +58,7 @@ namespace CustomVanillaAbility.CustomClasses
         {
             get
             {
-                return new System.Collections.Generic.List<string>();
+                return [];
             }
         }
 

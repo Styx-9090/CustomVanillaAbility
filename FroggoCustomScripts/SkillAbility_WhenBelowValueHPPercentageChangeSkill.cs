@@ -6,7 +6,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
 {
     public class SkillAbility_WhenBelowValueHPPercentageChangeSkill : CustomSkillAbility_ChangeSkillAtCondition
     {
-        public override void OnBattleStart(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        public override void OnBeforeTurn(BattleActionModel action)
         {
             BattleUnitModel owner = action.Model;
             SkillModel foundSkill = this.GetSelectedSkill(owner);

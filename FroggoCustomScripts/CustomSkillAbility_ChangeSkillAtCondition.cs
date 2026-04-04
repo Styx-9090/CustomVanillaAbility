@@ -1,6 +1,6 @@
-﻿using Lethe.Patches;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using CustomVanillaAbility.CustomClasses;
 
 namespace CustomVanillaAbility.FroggoCustomScripts
 {
@@ -24,13 +24,13 @@ namespace CustomVanillaAbility.FroggoCustomScripts
             return foundSkill;
         }
 
+
         public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
         {
             base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
-            int beginOfDataIndex = scriptName.IndexOf('_');
-
-            if (beginOfDataIndex <= 0 || !int.TryParse(scriptName[beginOfDataIndex..], out selectedSkillID)) selectedSkillID = (int)jsonValue;
+            if (!int.TryParse(this._extractedData, out selectedSkillID)) selectedSkillID = (int)jsonValue;
         }
+
 
         protected int selectedSkillID;
     }
