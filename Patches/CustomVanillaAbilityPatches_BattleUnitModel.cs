@@ -56,7 +56,7 @@ namespace CustomVanillaAbility.Patches
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { realAbility.OnEndCoin_BeforeLog(action, coin, false, timing); }
+                try { realAbility.OnEndCoin_BeforeLog(action, coin, timing); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }

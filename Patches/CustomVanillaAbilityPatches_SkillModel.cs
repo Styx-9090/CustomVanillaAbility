@@ -34,8 +34,9 @@ namespace CustomVanillaAbility.Patches
                     foreach (string lookup in bundle.abilityLookup)
                     {
                         if (!varScriptName.StartsWith(lookup)) continue;
+                        int lookupLenght = lookup.Length;
 
-                        bool isNotSimilar = (varScriptLenght == lookup.Length || (varScriptLenght > lookup.Length && varScriptName[varScriptLenght + 1] == '_'));
+                        bool isNotSimilar = (varScriptLenght == lookupLenght || (varScriptLenght > lookupLenght && varScriptName[lookupLenght] == '_'));
                         if (!isNotSimilar) continue;
 
                         scriptName = lookup;

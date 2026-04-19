@@ -13,13 +13,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
             if (foundSkill == null) return;
 
             float hp = owner.GetHpRatio();
-            //if (hp <= neededHP)
-            action.TryChangeSkill(selectedSkillID);
-        }
-
-        public override void OnBeforeTurn(BattleActionModel action)
-        {
-            action.TryChangeSkill(selectedSkillID);
+            if (hp <= neededHP) action.ChangeSkill(foundSkill);
         }
 
         public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)

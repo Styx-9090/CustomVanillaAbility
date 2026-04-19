@@ -560,7 +560,7 @@ namespace CustomVanillaAbility.CustomClasses
         {
         }
 
-        public virtual void OnEndCoin_BeforeLog(BattleActionModel action, CoinModel coin, bool isCritical, BATTLE_EVENT_TIMING timing)
+        public virtual void OnEndCoin_BeforeLog(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
         {
         }
 
