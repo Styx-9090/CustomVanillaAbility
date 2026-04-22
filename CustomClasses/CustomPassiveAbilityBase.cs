@@ -967,18 +967,6 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        /*
-        public virtual void RightBeforeGiveBuffBySkill(SkillModel skill, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD buf, int stack, int turn, BattleUnitModel target, BATTLE_EVENT_TIMING timing, bool? isCritical)
-        {
-
-        }
-
-        public virtual void RightAfterGiveBuffBySkill(SkillModel skill, BUFF_UNIQUE_KEYWORD buf, int stack, int turn, BattleUnitModel target, BATTLE_EVENT_TIMING timing, bool? isCritical)
-        {
-
-        }
-        */
-
         public virtual void RightBeforeOtherUnitGiveBuffBySkill(BattleUnitModel giver, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int stack, int turn, SkillModel skill, BATTLE_EVENT_TIMING timing)
         {
 
@@ -1054,7 +1042,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnBreak(BATTLE_EVENT_TIMING timing)
+        public virtual void OnBreak(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
         {
 
         }

@@ -16,12 +16,10 @@ namespace CustomVanillaAbility.FroggoCustomScripts
             if (hp <= neededHP) action.ChangeSkill(foundSkill);
         }
 
-        public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
+        public override void Init()
         {
-            base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
-            neededHP = info.Value;
+            neededHP = this._info.Value;
         }
-
 
         protected float neededHP;
     }

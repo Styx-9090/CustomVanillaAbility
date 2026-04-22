@@ -8,7 +8,6 @@ namespace CustomVanillaAbility.CustomClasses
     {
         public SkillModel _skillModel;
         public SkillAbility _reserveAbility = new();
-        public string _extractedData;
 
 
         protected override DAMAGE_SOURCE_TYPE _damageSourceType
@@ -46,21 +45,24 @@ namespace CustomVanillaAbility.CustomClasses
         /// Reminder to always use "base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);" as the first line when overriding
         /// </summary>
         /// /// <param name="info">This is actually never null, but I left it like in the original code just in-case</param>
-        public virtual void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
+        public void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
         {
             this._skillModel = skill;
             this._index = idx;
             this._jsonValue = jsonValue;
             this._reserveAbility.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
-            
-            int extractedDataInt = scriptName.IndexOf('_');
-            this._extractedData = (extractedDataInt > 0) ? scriptName[(extractedDataInt + 1)..] : string.Empty;
 
             this._bannedMethodTriggerNames.Add("Init");
             this._bannedMethodTriggerNames.Add("AttachConditionalData");
             this._bannedMethodTriggerNames.Add("InitLimitedActivateCountData");
             this._bannedMethodTriggerNames.Add("ReturnUniqueData");
             this.SetTrigger("skill");
+            this.Init();
+        }
+
+        public virtual void Init()
+        {
+
         }
 
         public override object ReturnUniqueData()
@@ -356,9 +358,9 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int? OverwriteTargetNum(BattleActionModel action)
+        public virtual int OverwriteTargetNum(BattleActionModel action)
         {
-            return null;
+            return 0;
         }
 
         public virtual int GetBuffStackAdder(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack)
@@ -401,12 +403,12 @@ namespace CustomVanillaAbility.CustomClasses
 
         public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isCritical)
         {
-            return 1f;
+            return 0f;
         }
 
         public virtual float GetExpectedAttackDmgMultiplier(BattleActionModel action, BattleUnitModel target, CoinModel coin)
         {
-            return 1f;
+            return 0f;
         }
 
         public virtual float GetCriticalChanceAdder(BattleActionModel action, CoinModel coin)
@@ -416,17 +418,17 @@ namespace CustomVanillaAbility.CustomClasses
 
         public virtual float GetCriticalChanceMultiplier(BattleActionModel action)
         {
-            return 1f;
+            return 0f;
         }
 
         public virtual float GetGiveBsGaugeUpMultiplier(bool onGiveExplosion, BattleUnitModel target, BattleActionModel action, CoinModel coinOrNull)
         {
-            return 1f;
+            return 0f;
         }
 
         public virtual float GetCoinProb(float prob)
         {
-            return prob;
+            return 0f;
         }
 
         //------------------------------------------------------------------------------------------//
@@ -447,22 +449,9 @@ namespace CustomVanillaAbility.CustomClasses
         //------------------------------------------------------------------------------------------//
         //------------------------------------------------------------------------------------------//
 
-        public virtual List<PrimeTargetData> GetPrimeTargets(BattleActionModel action)
+        public virtual Il2CppSystem.Collections.Generic.List<PrimeTargetData> GetPrimeTargets(BattleActionModel action)
         {
-            return [];
-        }
-
-        public virtual List<AB_PART_TYPE> GetLinkedParts(UnitModel abnormality)
-        {
-            return [];
-        }
-
-        //------------------------------------------------------------------------------------------//
-        //------------------------------------------------------------------------------------------//
-
-        public virtual ValueTuple<int, int> GetMultifliedDamage(BattleActionModel action, BattleUnitModel target)
-        {
-            return new ValueTuple<int, int>(0, 0);
+            return null;
         }
 
         //------------------------------------------------------------------------------------------//

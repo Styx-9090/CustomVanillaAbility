@@ -25,10 +25,9 @@ namespace CustomVanillaAbility.FroggoCustomScripts
         }
 
 
-        public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
+        public override void Init()
         {
-            base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
-            if (!int.TryParse(this._extractedData, out selectedSkillID)) selectedSkillID = (int)jsonValue;
+            if (!int.TryParse(this._extractedData, out selectedSkillID)) selectedSkillID = (int)this._jsonValue;
         }
 
 

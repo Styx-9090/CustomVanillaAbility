@@ -19,10 +19,12 @@ public class MainTemplate : BasePlugin
 
 public class SkillAbility_TemplateSkill : CustomSkillAbilityBase
 {
-    public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
+    public override void Init()
     {
-        base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
         this._extractedData = "this string gets everything after the underscore (_), eg. TemplateSkill_Test -> Test";
+        this._scriptName = "this string is the whole unmodified scriptName in the json";
+        this._extractorRegex = new System.Text.RegularExpressions.Regex("this regex contain the pattern you registed the class with");
+        //this._extractedRegexData this is the result of Regex.Match(scriptName)
     }
 }
 */

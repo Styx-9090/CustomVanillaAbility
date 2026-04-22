@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using CustomVanillaAbility.CustomClasses;
+using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility.Patches
 {
@@ -20,40 +21,61 @@ namespace CustomVanillaAbility.Patches
             System.Collections.Generic.List<CustomAbilityBase> newAbilities = [];
             int baseIndex = __instance.GetAbilityList().Count;
 
-            Il2CppSystem.Collections.Generic.List<AbilityData> skillAbilityList = __instance.skillData.abilityScriptList;
+            var skillAbilityList = __instance.skillData.abilityScriptList;
 
             for (int i = 0; i < skillAbilityList.Count; i++)
             {
-                AbilityData selectedData = skillAbilityList[i];
+                var selectedData = skillAbilityList[i];
+
                 try
                 {
-                    string scriptName = null;
                     string varScriptName = selectedData.ScriptName;
-                    int varScriptLenght = varScriptName.Length;
+                    int index = baseIndex + newAbilities.Count + 1;
 
-                    foreach (string lookup in bundle.abilityLookup)
+
+                    if (varScriptName.StartsWith("Reg", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (!varScriptName.StartsWith(lookup)) continue;
-                        int lookupLenght = lookup.Length;
+                        string cleanedName = varScriptName[3..];
 
-                        bool isNotSimilar = (varScriptLenght == lookupLenght || (varScriptLenght > lookupLenght && varScriptName[lookupLenght] == '_'));
-                        if (!isNotSimilar) continue;
-
-                        scriptName = lookup;
-                        break;
+                        if (CustomVanillaAbilityHelper.TryToCreateRegexLinked_Skill(bundle, cleanedName, __instance, index, selectedData, out CustomSkillAbilityBase customSkillAbility))
+                        {
+                            newAbilities.Add(customSkillAbility);
+                            continue;
+                        }
                     }
-                    if (scriptName == null) continue;
 
-                    if (!bundle.abilityClassDict.TryGetValue(scriptName, out System.Type template)) continue;
-                    CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(template);
-                    int idx = baseIndex + newAbilities.Count + 1;
-                    ability.Init(__instance, selectedData.scriptName, selectedData.Value, idx, selectedData.TurnLimit, selectedData.BuffData);
-                    if (selectedData.ConditionalData != null) ability.AttachConditionalData(selectedData.ConditionalData);
-                    if (selectedData.TurnLimit != 0) ability.InitLimitedActivateCountData(selectedData.TurnLimit);
-                    newAbilities.Add(ability);
+
+                    if (!bundle.abilityTypeByLookup.TryGetValue(varScriptName, out var template))
+                    {
+                        int varScriptLenght = varScriptName.Length;
+
+                        int underscoreIndex = varScriptName.IndexOf('_');
+                        string key = underscoreIndex > 0 ? varScriptName[..underscoreIndex] : varScriptName;
+
+                        if (!bundle.abilityClassDict.TryGetValue(key, out template))
+                        {
+                            bundle.abilityTypeByLookup[varScriptName] = null;
+                            continue;
+                        }
+
+                        bundle.abilityTypeByLookup[varScriptName] = template;
+                    }
+
+                    if (template != null)
+                    {
+                        newAbilities.Add(CustomVanillaAbilityHelper.CreateCustomSkillAbility(template, __instance, index, selectedData));
+                        continue;
+                    }
+
+
+                    if (!CustomVanillaAbilityHelper.TryToCreateRegexLinked_Skill(bundle, varScriptName, __instance, index, selectedData, out CustomSkillAbilityBase fallBackCustomSkillAbility)) continue;
+                    newAbilities.Add(fallBackCustomSkillAbility);
                 }
-                catch (System.Exception ex) { main.Log.LogError(ex); }
-            } 
+                catch (Exception ex)
+                {
+                    main.Log.LogError(ex);
+                }
+            }
 
             bundle.customAbilityTable.Add(__instance, newAbilities);
             if (_skillBundle != bundle) _skillBundle = bundle;
@@ -113,7 +135,7 @@ namespace CustomVanillaAbility.Patches
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
-            string methodName = nameof(SkillModel.IgnoreDefenseSkill);
+            string methodName = nameof(SkillModel.CanTeamKillOnStableOverclock);
 
             foreach (CustomAbilityBase ability in abilityList)
             {
@@ -665,6 +687,72 @@ namespace CustomVanillaAbility.Patches
         //-----------------------------------------------------------------------------------------------------------------------------------------//
 
 
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetPrimeTargets))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        public static void GetPrimeTargets_Postfix(BattleActionModel action, SkillModel __instance, ref Il2CppSystem.Collections.Generic.List<PrimeTargetData> __result)
+        {
+            if (__result != null && __result.Count > 0) return;
+
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetPrimeTargets);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try
+                {
+                    Il2CppSystem.Collections.Generic.List<PrimeTargetData> primeTargetData = realAbility.GetPrimeTargets(action);
+                    if (primeTargetData != null && primeTargetData.Count > 0)
+                    {
+                        __result = primeTargetData;
+                        return;
+                    }
+                }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------------------------------//
+
+
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetSkillLevelAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetSkillLevelAdder_Postfix(BattleActionModel action, SkillModel __instance, ref int __result)
@@ -678,6 +766,23 @@ namespace CustomVanillaAbility.Patches
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
                 try { __result += realAbility.GetSkillLevelAdder(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetAttackWeight))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
+        public static void GetAttackWeight_Postfix(BattleActionModel action, SkillModel __instance, ref int __result)
+        {
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            string methodName = nameof(SkillModel.GetAttackWeight);
+
+            foreach (CustomAbilityBase ability in abilityList)
+            {
+                if (ability is not CustomSkillAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { __result += realAbility.GetTargetNumAdder(action); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
@@ -2036,31 +2141,6 @@ namespace CustomVanillaAbility.Patches
                     if (realAbility.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical.Value))
                     {
                         __result = true;
-                        return;
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetPrimeTargets))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetPrimeTargets_Postfix(BattleActionModel action, SkillModel __instance, ref Il2CppSystem.Collections.Generic.List<PrimeTargetData> __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
-            string methodName = nameof(SkillModel.GetPrimeTargets);
-
-            foreach (CustomAbilityBase ability in abilityList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try
-                {
-                    System.Collections.Generic.List<PrimeTargetData> primeTargetData = realAbility.GetPrimeTargets(action);
-                    if (primeTargetData != null && primeTargetData.Count > 0)
-                    {
-                        __result = primeTargetData.ToIl2Cpp();
                         return;
                     }
                 }

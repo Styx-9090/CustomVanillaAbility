@@ -28,22 +28,22 @@ namespace CustomVanillaAbility.FroggoCustomScripts
             return finalRatio;
         }
 
-        public override void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
+        public override void Init()
         {
-            base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);
-            int CUT_DATA = this._extractedData.IndexOf('_');
-            if (CUT_DATA < 0) TARGET_STRING = this._extractedData[(CUT_DATA + 1)..];
+            if (this._extractedSeparatedData.Length == 1) return;
+
+            if (this._extractedSeparatedData.Length < 3) TARGET_STRING = this._extractedSeparatedData[1];
             else
             {
-                TARGET_STRING = this._extractedData[(CUT_DATA + 1)..];
-                RATIO_MAX = int.Parse(this._extractedData[..CUT_DATA]);
+                TARGET_STRING = this._extractedSeparatedData[1];
+                RATIO_MAX = int.Parse(this._extractedSeparatedData[2]);
             }
 
-            DAMAGE_RATIO = (int)jsonValue; 
+            DAMAGE_RATIO = (int)this._jsonValue; 
         }
 
-        protected string TARGET_STRING;
+        protected string TARGET_STRING = "Target";
         protected float DAMAGE_RATIO;
-        protected int RATIO_MAX = 0;
+        protected int RATIO_MAX = 100;
     }
 }

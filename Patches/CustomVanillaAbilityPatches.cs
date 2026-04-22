@@ -21,7 +21,7 @@ namespace CustomVanillaAbility.Patches
             skillBundle?.SafeClean();
             coinBundle?.SafeClean();
 
-            JSONArray skillJsonNodes = null;
+            JSONArray skillJsonNodes;
             if (skillFlag && coinFlag)
             {
                 var combined = new System.Collections.Generic.HashSet<string>(skillBundle.abilityLookup);

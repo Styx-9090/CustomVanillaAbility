@@ -2,7 +2,6 @@
 using Lethe.Patches;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 using static BattleActionModel.TargetDataDetail;
 
@@ -21,6 +20,47 @@ namespace CustomVanillaAbility
         public static bool IsOverride(this System.Reflection.MethodInfo method)
         {
             return method.GetBaseDefinition() != method;
+        }
+
+        public static CustomSkillAbilityBase CreateCustomSkillAbility(Type skillAbilityType, SkillModel skill, int idx, AbilityData selectedData, Regex regex = null)
+        {
+            CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(skillAbilityType);
+            ability.Init(skill, selectedData.scriptName, selectedData.Value, idx, selectedData.TurnLimit, selectedData.BuffData);
+            if (selectedData.ConditionalData != null) ability.AttachConditionalData(selectedData.ConditionalData);
+            if (selectedData.TurnLimit != 0) ability.InitLimitedActivateCountData(selectedData.TurnLimit);
+            ability.AttachNameData(selectedData.scriptName, regex);
+
+            return ability;
+        }
+
+        public static bool TryToCreateRegexLinked_Skill(CustomAbilityBundle bundle, string varScriptName, SkillModel skill, int idx, AbilityData selectedData, out CustomSkillAbilityBase customSkillResult)
+        {
+            customSkillResult = null;
+
+            if (!bundle.abilityRegTypeByLookup.TryGetValue(varScriptName, out var regType))
+            {
+                Regex matchedRegex = null;
+                Type matchedType = null;
+
+                foreach (var reg in bundle.regexLookup)
+                {
+                    if (!reg.IsMatch(varScriptName)) continue;
+                    matchedRegex = reg;
+
+                    if (bundle.abilityClassRegDict.TryGetValue(reg, out matchedType)) break;
+                    matchedRegex = null;
+                }
+
+                regType = (matchedRegex, matchedType);
+
+                bundle.abilityRegTypeByLookup[varScriptName] = regType;
+                if (matchedType == null) return false;
+            }
+            
+            if (regType.Item1 == null || regType.Item2 == null) return false;
+
+            customSkillResult = CustomVanillaAbilityHelper.CreateCustomSkillAbility(regType.Item2, skill, idx, selectedData, regType.Item1);
+            return true;
         }
 
         public static bool ProcessPatchListLogic(CustomAbilityBundle bundle, int instanceId, object instance,  out List<CustomAbilityBase> returnList)
