@@ -13,11 +13,9 @@ namespace CustomVanillaAbility.Patches
         public static void SafelyExitSkillInit(PassiveModel __instance)
         {
             CustomVanillaAbilityMain main = CustomVanillaAbilityMain.Instance;
-
             if (!CustomVanillaAbilityHelper.InitSetup<CustomPassiveAbilityBundle>("passive", __instance.GetID(), out CustomPassiveAbilityBundle bundle)) return;
 
-
-            if (_passiveBundle != bundle) _passiveBundle = (bundle as CustomPassiveAbilityBundle);
+            if (_passiveBundle != bundle) _passiveBundle = bundle;
         }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.Init))]
@@ -25,6 +23,21 @@ namespace CustomVanillaAbility.Patches
         public static void Init_Postfix(PassiveModel __instance)
         {
             try { SafelyExitSkillInit(__instance); }
+            catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogError(ex); }
+        }
+
+
+        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.IsActive))]
+        [HarmonyPostfix, HarmonyPriority(Priority.VeryHigh)]
+        public static void IsHide_Postfix(PassiveModel __instance, ref bool __result)
+        {
+            try
+            {
+                if (__instance.Script != null) return;
+                if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder holder)) return;
+
+                __result = holder.IsActive();
+            }
             catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogError(ex); }
         }
 
@@ -106,32 +119,6 @@ namespace CustomVanillaAbility.Patches
         //-----------------------------------------------------------------------------------------------------------------------------------------//
         //-----------------------------------------------------------------------------------------------------------------------------------------//
         //-----------------------------------------------------------------------------------------------------------------------------------------//
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.IsHide))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void IsHide_Postfix(PassiveModel __instance, ref bool __result)
-        {
-            if (__result == false) return;
-
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(SkillModel.IsShow);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomPassiveAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try
-                {
-                    if (!realAbility.IsHide)
-                    {
-                        __result = false;
-                        return;
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.IsTargetable))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -291,7 +278,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.SpreadHpDmgFromAbnormalityPart))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void SpreadHpDmgFromPart_Postfix(AB_PART_TYPE partType, int value, BattleUnitModel attackOrNull, BattleActionModel attackerActionOrNull, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, BUFF_UNIQUE_KEYWORD keyword, PassiveModel __instance, ref bool __result)
+        public static void SpreadHpDmgFromPart_Postfix(AB_PART_TYPE partType, int value, BattleUnitModel attackerOrNull, BattleActionModel attackerActionOrNull, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, BUFF_UNIQUE_KEYWORD keyword, PassiveModel __instance, ref bool __result)
         {
             if (__result == false) return;
 
@@ -305,7 +292,7 @@ namespace CustomVanillaAbility.Patches
 
                 try
                 {
-                    if (!realAbility.SpreadHpDmgFromPart(partType, value, attackOrNull, attackerActionOrNull, dmgSrcType, timing, keyword))
+                    if (!realAbility.SpreadHpDmgFromPart(partType, value, attackerOrNull, attackerActionOrNull, dmgSrcType, timing, keyword))
                     {
                         __result = false;
                         return;
@@ -317,10 +304,8 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.CheckImmortal))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void CheckImmortal_Postfix(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, PassiveModel __instance, ref bool __result)
+        public static void CheckImmortal_Postfix(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, PassiveModel __instance, ref bool __result, BattleActionModel actionOrNull = null)
         {
-            // CheckImmortal returns true by default, but we need to check if any custom ability wants it to be false
-            // However, we must preserve the original logic - if original returned false, keep it false
             if (__result == false) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -333,7 +318,7 @@ namespace CustomVanillaAbility.Patches
 
                 try
                 {
-                    if (!realAbility.CheckImmortal(timing, newHp, isInstantDeath, buff))
+                    if (!realAbility.CheckImmortal(timing, newHp, isInstantDeath, buff, actionOrNull))
                     {
                         __result = false;
                         return;
@@ -345,9 +330,8 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.IsAbnormalityImmortal))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void IsAbnormalityImmortal_Postfix(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, PassiveModel __instance, ref bool __result)
+        public static void IsAbnormalityImmortal_Postfix(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, PassiveModel __instance, ref bool __result, BattleActionModel actionOrNull = null)
         {
-            // IsAbnormalityImmortal returns false by default, so we check if any custom ability wants to override to true
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -360,7 +344,7 @@ namespace CustomVanillaAbility.Patches
 
                 try
                 {
-                    if (realAbility.IsAbnormalityImmortal(timing, newHp, isInstantDeath, buff))
+                    if (realAbility.IsAbnormalityImmortal(timing, newHp, isInstantDeath, buff, actionOrNull))
                     {
                         __result = true;
                         return;
@@ -372,7 +356,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.CheckImmortalOtherUnit))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void CheckImmortalOtherUnit_Postfix(BattleUnitModel checkTarget, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, PassiveModel __instance, ref bool __result)
+        public static void CheckImmortalOtherUnit_Postfix(BattleUnitModel checkTarget, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buf, PassiveModel __instance, ref bool __result)
         {
             if (__result == false) return;
 
@@ -386,7 +370,7 @@ namespace CustomVanillaAbility.Patches
 
                 try
                 {
-                    if (!realAbility.CheckImmortalOtherUnit(checkTarget, newHp, isInstantDeath, buff))
+                    if (!realAbility.CheckImmortalOtherUnit(checkTarget, newHp, isInstantDeath, buf))
                     {
                         __result = false;
                         return;
@@ -400,7 +384,6 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void CanTeamKill_Postfix(BattleActionModel action, PassiveModel __instance, ref bool __result)
         {
-            // CanTeamKill returns false by default, so check if any custom ability wants to override to true
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -531,7 +514,6 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void IgnoreCheckBreak_Postfix(DAMAGE_SOURCE_TYPE dmgSrcType, BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BUFF_UNIQUE_KEYWORD keyword, PassiveModel __instance, ref bool __result)
         {
-            // IgnoreCheckBreak returns false by default, so check if any custom ability wants to override to true
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -558,7 +540,6 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void IgnoreBreak_Postfix(PassiveModel __instance, ref bool __result)
         {
-            // IgnoreBreak returns false by default
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -585,7 +566,6 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void IgnoreBreakExceptForcedCase_Postfix(PassiveModel __instance, ref bool __result)
         {
-            // IgnoreBreakExceptForcedCase returns false by default
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -612,7 +592,6 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void IgnorePanic_Postfix(PassiveModel __instance, ref bool __result)
         {
-            // IgnorePanic returns false by default
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -639,7 +618,6 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void HasFakeDead_Postfix(PassiveModel __instance, ref bool __result)
         {
-            // HasFakeDead returns false by default
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -742,9 +720,8 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.IsChangeTakeDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void IsChangeTakeDamage_Postfix(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType, PassiveModel __instance, ref bool __result)
+        public static void IsChangeTakeDamage_Postfix(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType, BUFF_UNIQUE_KEYWORD keyword, PassiveModel __instance, ref bool __result)
         {
-            // IsChangeTakeDamage returns false by default
             if (__result == true) return;
 
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
@@ -757,7 +734,7 @@ namespace CustomVanillaAbility.Patches
 
                 try
                 {
-                    if (realAbility.IsChangeTakeDamage(action, coinOrNull, resultDmg, dmgSrcType))
+                    if (realAbility.IsChangeTakeDamage(action, coinOrNull, resultDmg, dmgSrcType, keyword))
                     {
                         __result = true;
                         return;
@@ -902,412 +879,7 @@ namespace CustomVanillaAbility.Patches
         //-----------------------------------------------------------------------------------------------------------------------------------------//
         //-----------------------------------------------------------------------------------------------------------------------------------------//
 
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetAttackWeightAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetAttackWeightAdder_Postfix(BattleActionModel action, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetAttackWeightAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetTargetNumAdder(action); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetSkillPowerAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, Il2CppSystem.Collections.Generic.List<CoinModel> coins, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetSkillPowerAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetSkillPowerAdder(action, rollType); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedSkillPowerAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedSkillPowerAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedSkillPowerAdder(action, rollType, expectedTargetSinActionOrNull); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetSkillPowerResultAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetSkillPowerResultAdder_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, CoinModel coinOrNull, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetSkillPowerResultAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetSkillPowerResultAdder(action, timing); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetCoinScaleAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetCoinScaleAdder_Postfix(PassiveModel __instance, BattleActionModel action, CoinModel coin, BattleActionModel oppoActionOrNull, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetCoinScaleAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetCoinScaleAdder(action, coin, oppoActionOrNull); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedCoinScaleAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedCoinScaleAdder_Postfix(PassiveModel __instance, BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel targetSinActionOrNull, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedCoinScaleAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedCoinScaleAdder(action, coin, rollType, targetSinActionOrNull); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedSkillPowerResultAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedSkillPowerResultAdder_Postfix(BattleActionModel action, BattleUnitModel expectedTargetOrNull, SinActionModel expectedTargetSinActionOrNull, BattleActionModel expectedOppoActionOrNull, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedSkillPowerResultAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedSkillPowerResultAdder(action, expectedTargetOrNull, expectedTargetSinActionOrNull, expectedOppoActionOrNull); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetParryingResultAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetParryingResultAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedParryingResultAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoActionOrNull, int oppoResult, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedParryingResultAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedParryingResultAdder(actorAction, actorResult, oppoActionOrNull, oppoResult); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetOpponentParryingResultAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetOpponentParryingResultAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedOpponentParryingResultAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedOpponentParryingResultAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedOpponentParryingResultAdder(actorAction, actorResult, oppoAction, oppoResult); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetAttackDmgMultiplier))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, PassiveModel __instance, ref float __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetAttackDmgMultiplier);
-
-            float tempResult = __result;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult *= realAbility.GetAttackDmgMultiplier(action, coin, target, isCritical); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedAttackDmgMultiplier))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SinActionModel targetSinActionOrNull, PassiveModel __instance, ref float __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedAttackDmgMultiplier);
-
-            float tempResult = __result;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult *= realAbility.GetExpectedAttackDmgMultiplier(action, targetOrNull, coin); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetAttackDmgAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetAttackDmgAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetAttackDmgAdder(action, target); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedAttackDmgAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedAttackDmgAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedAttackDmgAdder(action, targetOrNull); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetAttackHpDmgAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetAttackHpDmgAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetAttackHpDmgAdder(target); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetExpectedAttackHpDmgAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetExpectedAttackHpDmgAdder);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { __result += realAbility.GetExpectedAttackHpDmgAdder(target); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetCriticalChanceAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetCriticalChanceAdder_Postfix(BattleActionModel action, CoinModel coin, PassiveModel __instance, ref float __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetCriticalChanceAdder);
-
-            float tempResult = __result;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult += realAbility.GetCriticalChanceAdder(action, coin); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetCoinProbAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetCoinProbAdder_Postfix(UnitModel unit, float defaultProb, PassiveModel __instance, ref float __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetCoinProbAdder);
-
-            float tempResult = __result;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult += realAbility.GetCoinProb(defaultProb); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetGiveBufStackAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetGiveBufStackAdder_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetGiveBufStackAdder);
-
-            int tempResult = stack;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult = realAbility.GetBuffStackAdder(action, coinOrNull, target, keyword, tempResult); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetUseBuffTurnAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetUseBuffTurnAdder_Postfix(BattleActionModel action, int turn, BUFF_UNIQUE_KEYWORD buf, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetUseBuffTurnAdder);
-
-            int tempResult = turn;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult = realAbility.GetUseBuffTurnAdder(action, tempResult, buf); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetGiveBufTurnAdder))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetGiveBufTurnAdder_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int turn, PassiveModel __instance, ref int __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetGiveBufTurnAdder);
-
-            int tempResult = turn;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult = realAbility.GetBuffTurnAdder(action, target, keyword, tempResult); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.GetGiveBsGaugeUpMultiplier))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetGiveBsGaugeUpMultiplier_Postfix(bool onGiveExplosion, BattleUnitModel target, BattleActionModel action, CoinModel coinOrNull, PassiveModel __instance, ref float __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.GetGiveBsGaugeUpMultiplier);
-
-            float tempResult = __result;
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { tempResult *= realAbility.GetGiveBsGaugeUpMultiplier(onGiveExplosion, target, action, coinOrNull); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-            __result = tempResult;
-        }
+        
 
 
         //-----------------------------------------------------------------------------------------------------------------------------------------//
@@ -1455,7 +1027,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnReturnToField))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnReturnToField_Postfix(int retreatTurn, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnReturnToField_Postfix(int retreatTurn, BattleUnitModel triggerUnit, BUFF_UNIQUE_KEYWORD retreatKeyword, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnReturnToField);
@@ -1463,7 +1035,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnReturnToField(retreatTurn, timing); }
+                try { realAbility.OnReturnToField(retreatTurn, triggerUnit, retreatKeyword, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -1515,7 +1087,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnPanicOrLowMorale))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnPanicOrLowMorale_Postfix(PANIC_LEVEL level, PassiveModel __instance)
+        public static void OnPanicOrLowMorale_Postfix(PANIC_LEVEL level, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnPanicOrLowMorale);
@@ -1523,14 +1095,14 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnPanicOrLowMorale(level); }
+                try { realAbility.OnPanicOrLowMorale(level, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnCompleteCommand))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnCompleteCommand_Postfix(PassiveModel __instance)
+        public static void OnCompleteCommand_Postfix(BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnCompleteCommand);
@@ -1538,7 +1110,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnCompleteCommand(); }
+                try { realAbility.OnCompleteCommand(timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -1605,7 +1177,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnStartDuel))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnStartDuel_Postfix(BattleActionModel ownerAction, BattleActionModel opponentAction, PassiveModel __instance)
+        public static void OnStartDuel_Postfix(BattleActionModel ownerAction, BattleActionModel opponentAction, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnStartDuel);
@@ -1613,7 +1185,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnStartDuel(ownerAction, opponentAction); }
+                try { realAbility.OnStartDuel(ownerAction, opponentAction, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -1650,7 +1222,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnWinParrying))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnWinParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, PassiveModel __instance)
+        public static void OnWinParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnWinParrying);
@@ -1658,7 +1230,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnWinParrying(selfAction, oppoAction); }
+                try { realAbility.OnWinParrying(selfAction, oppoAction, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -1680,7 +1252,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnDuelAfter_BeforeLog))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnDuelAfter_BeforeLog_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnDuelAfter_BeforeLog_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, int parryingCount, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnDuelAfter_BeforeLog);
@@ -1688,7 +1260,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnDuelAfter_BeforeLog(action, timing); }
+                try { realAbility.OnDuelAfter_BeforeLog(selfAction, oppoAction, parryingCount, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -1723,6 +1295,7 @@ namespace CustomVanillaAbility.Patches
             }
         }
 
+        /*
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.BeforeGiveAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void BeforeGiveAttackDamage_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
@@ -1737,6 +1310,7 @@ namespace CustomVanillaAbility.Patches
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
+        */
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnGiveHpDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -1802,7 +1376,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnCriticalActivated))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnCriticalActivated_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnCriticalActivated_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnCriticalActivated);
@@ -1810,14 +1384,14 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnCriticalActivated(action, timing); }
+                try { realAbility.OnCriticalActivated(action, coin, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnStartCoin))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnStartCoin_Postfix(BattleActionModel action, CoinModel coin, PassiveModel __instance)
+        public static void OnStartCoin_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnStartCoin);
@@ -1825,14 +1399,14 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnStartCoin(action, coin); }
+                try { realAbility.OnStartCoin(action, coin, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnEndCoin_BeforeLog))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, PassiveModel __instance)
+        public static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnEndCoin_BeforeLog);
@@ -1840,7 +1414,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnEndCoin_BeforeLog(action, coin); }
+                try { realAbility.OnEndCoin_BeforeLog(action, coin, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -1919,7 +1493,8 @@ namespace CustomVanillaAbility.Patches
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
-
+        
+        /*
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnSucceedAttack))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnSucceedAttack_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
@@ -1934,6 +1509,7 @@ namespace CustomVanillaAbility.Patches
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
+        */
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnRollOneCoin_AfterAttack))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -1967,7 +1543,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnEndAttackPart))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnEndAttackPart_Postfix(BattleUnitModel_Abnormality_Part part, BattleActionModel action, PassiveModel __instance)
+        public static void OnEndAttackPart_Postfix(BattleUnitModel_Abnormality_Part part, BattleActionModel action, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnEndAttackPart);
@@ -2027,7 +1603,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnActivateImmortality))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnActivateImmortality_Postfix(BattleUnitModel immortalActivator, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnActivateImmortality_Postfix(BattleUnitModel immortalActivator, BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnActivateImmortality);
@@ -2035,14 +1611,14 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnActivateImmortality(immortalActivator, timing); }
+                try { realAbility.OnActivateImmortality(immortalActivator, timing, actionOrNull); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnActivateAbnormalityImmortality))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnActivateAbnormalityImmortality_Postfix(BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnActivateAbnormalityImmortality_Postfix(BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnActivateAbnormalityImmortality);
@@ -2050,7 +1626,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnActivateAbnormalityImmortality(timing); }
+                try { realAbility.OnActivateAbnormalityImmortality(timing, actionOrNull); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2132,7 +1708,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnTakeAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnTakeAttackDamage_Postfix(BattleActionModel action, int realDmg, int hpDmg, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnTakeAttackDamage_Postfix(BattleActionModel action, CoinModel coin, int totalDmg, int hpDmg, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnTakeAttackDamage);
@@ -2140,7 +1716,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnTakeAttackDamage(action, realDmg, hpDmg, timing); }
+                try { realAbility.OnTakeAttackDamage(action, coin, totalDmg, hpDmg, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2207,7 +1783,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnRetreat))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnRetreat_Postfix(BattleUnitModel triggerUnit, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnRetreat_Postfix(BattleUnitModel triggerUnit, BUFF_UNIQUE_KEYWORD retreatKeyword, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnRetreat);
@@ -2215,7 +1791,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnRetreat(triggerUnit, timing); }
+                try { realAbility.OnRetreat(triggerUnit, retreatKeyword, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2282,7 +1858,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.RightAfterLosingBuff))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void RightAfterLosingBuff_Postfix(BATTLE_EVENT_TIMING timing, BuffInfo info, PassiveModel __instance)
+        public static void RightAfterLosingBuff_Postfix(int loseStack, int loseTurn, BATTLE_EVENT_TIMING timing, BuffInfo info, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.RightAfterLosingBuff);
@@ -2290,7 +1866,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.RightAfterLosingBuff(timing, info); }
+                try { realAbility.RightAfterLosingBuff(loseStack, loseTurn, timing, info); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2314,7 +1890,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.RightAfterGetAnyBuff))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void RightAfterGetAnyBuff_Postfix(BUFF_UNIQUE_KEYWORD keyword, int stack, int activeRound, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel actionOrNull, PassiveModel __instance)
+        public static void RightAfterGetAnyBuff_Postfix(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, int activeRound, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel actionOrNull, int overStack, int overTurn, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.RightAfterGetAnyBuff);
@@ -2322,7 +1898,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.RightAfterGetAnyBuff(keyword, stack, activeRound, srcType, timing, giverOrNull, actionOrNull); }
+                try { realAbility.RightAfterGetAnyBuff(keyword, stack, turn, activeRound, srcType, timing, giverOrNull, actionOrNull, overStack, overTurn); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2344,7 +1920,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnDestroy))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnDestroy_Postfix(BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnDestroy_Postfix(BattleUnitModel destroyerOrNull, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnDestroy);
@@ -2352,7 +1928,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnDestroy(timing); }
+                try { realAbility.OnDestroy(destroyerOrNull, timing); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2479,7 +2055,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnBreak))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnBreak_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void OnBreak_Postfix(BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BATTLE_EVENT_TIMING timing, bool isBreakForcely, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnBreak);
@@ -2487,7 +2063,7 @@ namespace CustomVanillaAbility.Patches
             {
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-                try { realAbility.OnBreak(action, coinOrNull, target, dmgSrcType, timing); }
+                try { realAbility.OnBreak(attackerOrNull, actionOrNull, timing, isBreakForcely); }
                 catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
             }
         }
@@ -2659,7 +2235,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.CheckLoseBuffStackAndTurn))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void CheckLoseBuffStackAndTurn_Postfix(BuffInfo info, int loseStack, int loseTurn, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
+        public static void CheckLoseBuffStackAndTurn_Postfix(BuffInfo info, ref int loseStack, ref int loseTurn, BATTLE_EVENT_TIMING timing, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.CheckLoseBuffStackAndTurn);
@@ -2809,7 +2385,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnTakeMpDamageOther))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnTakeMpDamageOther_Postfix(BattleUnitModel mpDmgUnit, BattleUnitModel attackerOrNull, int value, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BattleActionModel actionOrNull, PassiveModel __instance)
+        public static void OnTakeMpDamageOther_Postfix(BattleUnitModel mpDmgUnit, BattleUnitModel attackerOrNull, int value, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BUFF_UNIQUE_KEYWORD buffKeyword, BattleActionModel actionOrNull, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnTakeMpDamageOther);
@@ -2944,7 +2520,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OnFailedToGetBuff))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnFailedToGetBuff_Postfix(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, int activeRound, ABILITY_SOURCE_TYPE abilitySrcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, PassiveModel __instance)
+        public static void OnFailedToGetBuff_Postfix(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, int activeRound, ABILITY_SOURCE_TYPE abilitySrcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel giverActionOrNull, PassiveModel __instance)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
             string methodName = nameof(PassiveModel.OnFailedToGetBuff);
@@ -3011,155 +2587,5 @@ namespace CustomVanillaAbility.Patches
         //-----------------------------------------------------------------------------------------------------------------------------------------//
 
 
-        /*
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OverwriteCriticalResult))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, PassiveModel __instance, ref bool __result, out Il2CppSystem.Nullable<bool> overwirteCriticalResult)
-        {
-            overwirteCriticalResult = false;
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.OverwriteCriticalResult);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try 
-                { 
-                    if (realAbility.OverwriteCriticalResult(action, coin, tempCritical, out Il2CppSystem.Nullable<bool> newOverwriteResult))
-                    {
-                        if (newOverwriteResult.HasValue)
-                        {
-                            overwirteCriticalResult = newOverwriteResult;
-                            return;
-                        }
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OverwriteSkillIconID))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OverwriteSkillIconID_Postfix(PassiveModel __instance, ref string __result)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.OverwriteSkillIconID);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try 
-                { 
-                    string newResult = realAbility.OverwriteSkillIconID();
-                    if (!string.IsNullOrEmpty(newResult))
-                    {
-                        __result = newResult;
-                        return;
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.OverrideCanDuel))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OverwriteCanDuel_Postfix(bool value, PassiveModel __instance)
-        {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.OverrideCanDuel);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try { realAbility.OverwriteCanDuel(value); }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.BlockLoseBuffByReactWithAction))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void BlockLoseBuffByReactWithAction_Postfix(BattleActionModel action, CoinModel coinOrNull, BUFF_UNIQUE_KEYWORD keyword, Il2CppSystem.Nullable<bool> isCritical, PassiveModel __instance, ref bool __result)
-        {
-            if (__result == true) return;
-
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.BlockLoseBuffByReactWithAction);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try
-                {
-                    if (realAbility.BlockLoseBuffByReactWithAction(action, keyword, isCritical.Value))
-                    {
-                        __result = true;
-                        return;
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.BlockGivingBuff))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void BlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, Il2CppSystem.Nullable<bool> isCritical, PassiveModel __instance, ref bool __result)
-        {
-            if (__result == true) return;
-
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.BlockGivingBuff);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try
-                {
-                    if (realAbility.BlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical.Value))
-                    {
-                        __result = true;
-                        return;
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-
-        [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.ExpectedBlockGivingBuff))]
-        [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void ExpectedBlockGivingBuff_Postfix(BattleActionModel action, BattleUnitModel buffTarget, BUFF_UNIQUE_KEYWORD keyword, CoinModel coinOrNull, Il2CppSystem.Nullable<bool> isCritical, PassiveModel __instance, ref bool __result)
-        {
-            if (__result == true) return;
-
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Passive(_passiveBundle, __instance.GetID(), __instance, out CustomPassiveAbilityHolder abilityHolder)) return;
-            string methodName = nameof(PassiveModel.ExpectedBlockGivingBuff);
-
-            foreach (CustomAbilityBase ability in abilityHolder.passiveList)
-            {
-                if (ability is not CustomSkillAbilityBase realAbility) continue;
-                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
-
-                try
-                {
-                    if (realAbility.ExpectedBlockGivingBuff(action, buffTarget, keyword, coinOrNull, isCritical.Value))
-                    {
-                        __result = true;
-                        return;
-                    }
-                }
-                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
-            }
-        }
-        */
     }
 }

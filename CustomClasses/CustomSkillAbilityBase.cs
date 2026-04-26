@@ -406,7 +406,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0f;
         }
 
-        public virtual float GetExpectedAttackDmgMultiplier(BattleActionModel action, BattleUnitModel target, CoinModel coin)
+        public virtual float GetExpectedAttackDmgMultiplier(BattleActionModel action, BattleUnitModel target, CoinModel coin, SinActionModel targetSinActionOrNull)
         {
             return 0f;
         }

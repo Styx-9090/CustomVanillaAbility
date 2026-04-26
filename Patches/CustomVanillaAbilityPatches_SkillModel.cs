@@ -853,7 +853,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinScaleAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleActionModel oppoActionOrNull, ref int __result)
+        public static void GetCoinScaleAdder_Postfix(BattleActionModel action, CoinModel coin, BattleActionModel oppoActionOrNull, SkillModel __instance, ref int __result)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetCoinScaleAdder);
@@ -870,7 +870,7 @@ namespace CustomVanillaAbility.Patches
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetExpectedCoinScaleAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void GetExpectedCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel targetSinActionOrNull, ref int __result)
+        public static void GetExpectedCoinScaleAdder_Postfix(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel targetSinActionOrNull, SkillModel __instance, ref int __result)
         {
             if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedCoinScaleAdder);
@@ -1036,7 +1036,7 @@ namespace CustomVanillaAbility.Patches
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { tempResult *= realAbility.GetExpectedAttackDmgMultiplier(action, targetOrNull, coin); }
+                try { tempResult *= realAbility.GetExpectedAttackDmgMultiplier(action, targetOrNull, coin, targetSinActionOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
             __result = tempResult;
@@ -1218,7 +1218,7 @@ namespace CustomVanillaAbility.Patches
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { tempResult = realAbility.GetUseBuffTurnAdder(action, tempResult, buf); }
+                try { tempResult = realAbility.GetUseBuffTurnAdder(action, turn, buf); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
             __result = tempResult;
@@ -1237,7 +1237,7 @@ namespace CustomVanillaAbility.Patches
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { tempResult = realAbility.GetBuffTurnAdder(action, target, keyword, tempResult); }
+                try { tempResult = realAbility.GetBuffTurnAdder(action, target, keyword, turn); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
             __result = tempResult;

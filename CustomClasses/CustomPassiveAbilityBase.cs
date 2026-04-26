@@ -122,12 +122,12 @@ namespace CustomVanillaAbility.CustomClasses
             return true;
         }
 
-        public virtual bool CheckImmortal(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff)
+        public virtual bool CheckImmortal(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, BattleActionModel actionOrNull)
         {
             return true;
         }
 
-        public virtual bool IsAbnormalityImmortal(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff)
+        public virtual bool IsAbnormalityImmortal(BATTLE_EVENT_TIMING timing, int newHp, bool isInstantDeath, BUFF_UNIQUE_KEYWORD buff, BattleActionModel actionOrNull)
         {
             return false;
         }
@@ -202,7 +202,7 @@ namespace CustomVanillaAbility.CustomClasses
             return true;
         }
 
-        public virtual bool IsChangeTakeDamage(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType)
+        public virtual bool IsChangeTakeDamage(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType, BUFF_UNIQUE_KEYWORD keyword)
         {
             return false;
         }
@@ -263,7 +263,7 @@ namespace CustomVanillaAbility.CustomClasses
         }
 
         /*
-        public virtual int GetGiveBuffStackAdder(BattleActionModel action, SkillModel skill, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD buf, int currentStack, BATTLE_EVENT_TIMING timing, bool? isCritical)
+        public virtual int GetGiveBuffStackAdder(BattleActionModel action, SkillModel skill, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD buf, int currentStack, BATTLE_EVENT_TIMING timing, bool isCritical)
         {
             return 0;
         }
@@ -593,7 +593,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnReturnToField(int retreatTurn, BATTLE_EVENT_TIMING timing)
+        public virtual void OnReturnToField(int retreatTurn, BattleUnitModel triggerUnit, BUFF_UNIQUE_KEYWORD retreatKeyword, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -613,12 +613,12 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnPanicOrLowMorale(PANIC_LEVEL level)
+        public virtual void OnPanicOrLowMorale(PANIC_LEVEL level, BATTLE_EVENT_TIMING timing)
         {
 
         }
 
-        public virtual void OnCompleteCommand()
+        public virtual void OnCompleteCommand(BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -643,7 +643,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnStartDuel(BattleActionModel ownerAction, BattleActionModel opponentAction)
+        public virtual void OnStartDuel(BattleActionModel ownerAction, BattleActionModel opponentAction, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -658,7 +658,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnWinParrying(BattleActionModel selfAction, BattleActionModel oppoAction)
+        public virtual void OnWinParrying(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -668,7 +668,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnDuelAfter_BeforeLog(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        public virtual void OnDuelAfter_BeforeLog(BattleActionModel selfAction, BattleActionModel oppoAction, int parryingCount, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -708,17 +708,17 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnCriticalActivated(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        public virtual void OnCriticalActivated(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
         {
 
         }
 
-        public virtual void OnStartCoin(BattleActionModel action, CoinModel coin)
+        public virtual void OnStartCoin(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
         {
 
         }
 
-        public virtual void OnEndCoin_BeforeLog(BattleActionModel action, CoinModel coin)
+        public virtual void OnEndCoin_BeforeLog(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -783,12 +783,12 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnActivateImmortality(BattleUnitModel immortalActivator, BATTLE_EVENT_TIMING timing)
+        public virtual void OnActivateImmortality(BattleUnitModel immortalActivator, BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull)
         {
 
         }
 
-        public virtual void OnActivateAbnormalityImmortality(BATTLE_EVENT_TIMING timing)
+        public virtual void OnActivateAbnormalityImmortality(BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull)
         {
 
         }
@@ -818,7 +818,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnTakeAttackDamage(BattleActionModel action, int realDmg, int hpDmg, BATTLE_EVENT_TIMING timing)
+        public virtual void OnTakeAttackDamage(BattleActionModel action, CoinModel coin, int totalDmg, int hpDmg, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -843,7 +843,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnRetreat(BattleUnitModel triggerUnit, BATTLE_EVENT_TIMING timing)
+        public virtual void OnRetreat(BattleUnitModel triggerUnit, BUFF_UNIQUE_KEYWORD retreatKeyword, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -868,7 +868,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void RightAfterLosingBuff(BATTLE_EVENT_TIMING timing, BuffInfo info)
+        public virtual void RightAfterLosingBuff(int loseStack, int loseTurn, BATTLE_EVENT_TIMING timing, BuffInfo info)
         {
 
         }
@@ -878,7 +878,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void RightAfterGetAnyBuff(BUFF_UNIQUE_KEYWORD keyword, int stack, int activeRound, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel actionOrNull)
+        public virtual void RightAfterGetAnyBuff(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, int activeRound, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel actionOrNull, int overStack, int overTurn)
         {
 
         }
@@ -888,7 +888,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnDestroy(BATTLE_EVENT_TIMING timing)
+        public virtual void OnDestroy(BattleUnitModel destroyerOrNull, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -933,7 +933,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnBreak(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+        public virtual void OnBreak(BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BATTLE_EVENT_TIMING timing, bool isBreakForcely)
         {
 
         }
