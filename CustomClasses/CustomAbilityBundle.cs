@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility.CustomClasses
@@ -7,42 +8,42 @@ namespace CustomVanillaAbility.CustomClasses
     {
         public bool availableState;
 
-        internal System.Collections.Generic.HashSet<Type> abilityTypeHash;
-        internal System.Collections.Generic.Dictionary<string, Type> abilityTypeByLookup;
-        internal System.Runtime.CompilerServices.ConditionalWeakTable<object, System.Collections.Generic.List<CustomAbilityBase>> customAbilityTable;
+        internal readonly System.Collections.Generic.HashSet<Type> abilityTypeHash = new();
+        internal readonly System.Collections.Generic.Dictionary<string, Type> abilityTypeByLookup = new(StringComparer.OrdinalIgnoreCase);
+
+        internal readonly System.Collections.Generic.Dictionary<string, Type> abilityClassDict = new();
+        internal readonly System.Collections.Generic.HashSet<string> abilityLookup = new();
+        internal readonly System.Collections.Generic.HashSet<long> affectedLookup = new();
 
 
-        internal System.Collections.Generic.Dictionary<string, Type> abilityClassDict;
-        internal System.Collections.Generic.HashSet<string> abilityLookup;
-        internal System.Collections.Generic.HashSet<long> affectedLookup;
+        internal readonly System.Collections.Generic.Dictionary<Regex, Type> abilityClassRegDict = new();
+        internal readonly System.Collections.Generic.List<Regex> regexLookup = new();
+        internal readonly System.Collections.Generic.Dictionary<string, (Regex, Type)> abilityRegTypeByLookup = new(StringComparer.OrdinalIgnoreCase);
 
-        internal System.Collections.Generic.Dictionary<Regex, Type> abilityClassRegDict;
-        internal System.Collections.Generic.List<Regex> regexLookup;
-        internal System.Collections.Generic.Dictionary<string, (Regex, Type)> abilityRegTypeByLookup;
-
-
-        public CustomAbilityBundle()
+        public virtual bool ContainValue(object key)
         {
-            availableState = false;
-            abilityTypeHash = [];
-
-            abilityClassDict = new System.Collections.Generic.Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
-            customAbilityTable = [];
-
-            affectedLookup = [];
-            abilityLookup = [];
-            abilityTypeByLookup = [];
-
-            regexLookup = [];
-            abilityClassRegDict = [];
-            abilityRegTypeByLookup = new System.Collections.Generic.Dictionary<string, (Regex, Type)>(StringComparer.OrdinalIgnoreCase);
+            return false;
         }
+    }
 
+    public class CustomSkillAbilityBundle : CustomAbilityBundle
+    {
+        internal readonly ConditionalWeakTable<SkillModel, System.Collections.Generic.List<CustomAbilityBase>> customAbilityTable = new();
 
-        public void SafeClean()
+        public override bool ContainValue(object key)
         {
-            customAbilityTable?.Clear();
-            affectedLookup?.Clear();
+            return customAbilityTable.TryGetValue((SkillModel)key, out _);
+        }
+    }
+
+
+    public class CustomPassiveAbilityBundle : CustomAbilityBundle
+    {
+        internal readonly ConditionalWeakTable<PassiveModel, CustomPassiveAbilityHolder> customAbilityHolderTable = new();
+
+        public override bool ContainValue(object key)
+        {
+            return customAbilityHolderTable.TryGetValue((PassiveModel)key, out _);
         }
     }
 }

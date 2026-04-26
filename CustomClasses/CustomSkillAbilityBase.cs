@@ -565,7 +565,7 @@ namespace CustomVanillaAbility.CustomClasses
         {
         }
 
-        public virtual void OnCriticalIsActivated(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
+        public virtual void OnCriticalIsActivated(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
         {
         }
 

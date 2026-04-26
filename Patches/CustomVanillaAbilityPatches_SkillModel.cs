@@ -2,21 +2,17 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using CustomVanillaAbility.CustomClasses;
-using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility.Patches
 {
     public static class CustomVanillaAbilityPatches_SkillModel
     {
-        public static CustomAbilityBundle _skillBundle = new();
+        public static CustomSkillAbilityBundle _skillBundle = new();
 
         public static void SafelyExitSkillInit(SkillModel __instance)
         {
             CustomVanillaAbilityMain main = CustomVanillaAbilityMain.Instance;
-
-            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle bundle)) return;
-            if (!bundle.affectedLookup.Contains(__instance.GetID())) return;
-            if (bundle.customAbilityTable.TryGetValue(__instance, out _)) return;
+            if (!CustomVanillaAbilityHelper.InitSetup<CustomSkillAbilityBundle>("skill", __instance.GetID(), out CustomSkillAbilityBundle bundle)) return;
 
             System.Collections.Generic.List<CustomAbilityBase> newAbilities = [];
             int baseIndex = __instance.GetAbilityList().Count;
@@ -81,7 +77,7 @@ namespace CustomVanillaAbility.Patches
             if (_skillBundle != bundle) _skillBundle = bundle;
         }
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init), new Type[] { })]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init), [])]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryHigh)]
         public static void Init_Postfix(SkillModel __instance)
         {
@@ -134,7 +130,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanTeamKillOnStableOverclock);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -160,7 +156,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == false) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsShow);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -186,7 +182,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IgnoreDefenseSkill);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -212,7 +208,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == false) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsActionable);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -238,7 +234,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsPanicBlock);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -264,7 +260,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsSkillAbsorbingThisDamage);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -290,7 +286,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == false) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanUseSkill);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -316,7 +312,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == false) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanDealTarget);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -342,7 +338,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.AttackByMpDmgRatherThanHpDmg);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -368,7 +364,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == false) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanBeChangedTarget);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -394,7 +390,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanChangeMainTargetRegardlessSpeed);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -420,7 +416,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanBeChangedTargetIgnoreSpeed);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -446,7 +442,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsDefenseSkillForOther);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -472,7 +468,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.CanCheckErode);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -498,7 +494,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsReusable);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -524,7 +520,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == false) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsChangeable);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -550,7 +546,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BlockAddSinStock);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -576,7 +572,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsBlockingTargetBurstBuffEffectReact);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -602,7 +598,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsBlockingTargetSinkingBuffEffectReact);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -628,7 +624,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.IsRetreatSkill);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -693,7 +689,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result != null && __result.Count > 0) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetPrimeTargets);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -757,7 +753,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetSkillLevelAdder_Postfix(BattleActionModel action, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetSkillLevelAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -774,7 +770,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetAttackWeight_Postfix(BattleActionModel action, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetAttackWeight);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -791,7 +787,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, Il2CppSystem.Collections.Generic.List<CoinModel> coins, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetSkillPowerAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -808,7 +804,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedSkillPowerAdder_Postfix(BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedSkillPowerAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -825,7 +821,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetEvadeSkillPowerAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetEvadeSkillPowerAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -842,7 +838,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetSkillPowerResultAdder_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, CoinModel coinOrNull, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetSkillPowerResultAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -859,7 +855,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, BattleActionModel oppoActionOrNull, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetCoinScaleAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -876,7 +872,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedCoinScaleAdder_Postfix(SkillModel __instance, BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel targetSinActionOrNull, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedCoinScaleAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -893,7 +889,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetEvadeCoinScaleAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetEvadeCoinScaleAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -910,7 +906,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedEvadeCoinScaleAdder_Postfix(BattleActionModel evadeAction, BattleActionModel attackerAction, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedEvadeCoinScaleAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -927,7 +923,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedSkillPowerResultAdder_Postfix(BattleActionModel action, BattleUnitModel expectedTargetOrNull, SinActionModel expectedTargetSinActionOrNull, BattleActionModel expectedOppoActionOrNull, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedSkillPowerResultAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -944,7 +940,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetParryingResultAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -961,7 +957,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoActionOrNull, int oppoResult, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedParryingResultAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -978,7 +974,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetOpponentParryingResultAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -995,7 +991,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedOpponentParryingResultAdder_Postfix(BattleActionModel actorAction, int actorResult, BattleActionModel oppoAction, int oppoResult, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedOpponentParryingResultAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1012,7 +1008,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetAttackDmgMultiplier);
 
             float tempResult = __result;
@@ -1031,7 +1027,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedAttackDmgMultiplier_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SinActionModel targetSinActionOrNull, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedAttackDmgMultiplier);
 
             float tempResult = __result;
@@ -1050,7 +1046,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetAttackDmgAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1067,7 +1063,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedAttackDmgAdder_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedAttackDmgAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1084,7 +1080,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetAttackHpDmgAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1101,7 +1097,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetExpectedAttackHpDmgAdder_Postfix(BattleUnitModel target, CoinModel coin, bool isWinDuel, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetExpectedAttackHpDmgAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1118,7 +1114,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCriticalChanceMultiplier_Postfix(BattleActionModel action, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetCriticalChanceMultiplier);
 
             float tempResult = __result;
@@ -1137,7 +1133,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCriticalChanceAdder_Postfix(BattleActionModel action, CoinModel coin, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetCriticalChanceAdder);
 
             float tempResult = __result;
@@ -1152,11 +1148,11 @@ namespace CustomVanillaAbility.Patches
             __result = tempResult;
         }
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(UnitModel), typeof(float) })]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), [typeof(UnitModel), typeof(float)])]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCoinProb_UnitModel_Postfix(UnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetCoinProb);
 
             float tempResult = __result;
@@ -1171,11 +1167,11 @@ namespace CustomVanillaAbility.Patches
             __result = tempResult;
         }
 
-        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), new Type[] { typeof(BattleUnitModel), typeof(float) })]
+        [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetCoinProb), [typeof(BattleUnitModel), typeof(float)])]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCoinProb_BattleUnitModel_Postfix(BattleUnitModel unit, float defaultProb, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetCoinProb);
 
             float tempResult = __result;
@@ -1194,7 +1190,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetGiveBuffStackAdder_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int stack, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetGiveBuffStackAdder);
 
             int tempResult = stack;
@@ -1213,7 +1209,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetUseBuffTurnAdder_Postfix(BattleActionModel action, int turn, BUFF_UNIQUE_KEYWORD buf, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetUseBuffTurnAdder);
 
             int tempResult = turn;
@@ -1232,7 +1228,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetGiveBuffTurnAdder_Postfix(BattleActionModel action, BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int turn, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetGiveBuffTurnAdder);
 
             int tempResult = turn;
@@ -1251,7 +1247,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetAdditionalActivateCountForDefenseSkill_Postfix(BattleUnitModel owner, SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetAdditionalActivateCountForDefenseSkill);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1268,7 +1264,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetGiveBsGaugeUpMultiplier_Postfix(bool onGiveExplosion, BattleUnitModel target, BattleActionModel action, CoinModel coinOrNull, SkillModel __instance, ref float __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.GetGiveBsGaugeUpMultiplier);
 
             float tempResult = __result;
@@ -1287,7 +1283,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void StackNextTurnAggroAdder_Postfix(SkillModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.StackNextTurnAggroAdder);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1343,7 +1339,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void BeforeAttack_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BeforeAttack);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1360,7 +1356,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnBattleStart_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnBattleStart);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1377,7 +1373,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnRoundEnd_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnRoundEnd);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1394,7 +1390,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnBeforeTurn_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnBeforeTurn);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1411,7 +1407,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnBeforeDefense_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnBeforeDefense);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1428,7 +1424,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnStartTurn_BeforeLog_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnStartTurn_BeforeLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1445,7 +1441,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnTryEvade_Postfix(BattleActionModel action, BattleActionModel attackerAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnTryEvade);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1462,7 +1458,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnStartDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnStartDuel);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1479,7 +1475,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnBeforeParryingOnce_Postfix(BattleActionModel ownerAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnBeforeParryingOnce);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1496,7 +1492,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnBeforeParryingOnce_AfterLog_Postfix(BattleActionModel ownerAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnBeforeParryingOnce_AfterLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1513,7 +1509,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnDuelAfter_BeforeLog_Postfix(SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnDuelAfter_BeforeLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1530,7 +1526,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnDuelAfter_AfterLog_Postfix(SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnDuelAfter_AfterLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1547,7 +1543,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnWinParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnWinParrying);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1564,7 +1560,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnLoseParrying_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnLoseParrying);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1581,7 +1577,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnWinDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, int parryingCount, BattleLog_Parrying lastLogOrNull, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnWinDuel);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1598,7 +1594,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnLoseDuel_Postfix(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnLoseDuel);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1615,7 +1611,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void BeforeBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BeforeBehaviour);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1632,7 +1628,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnStartBehaviour_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnStartBehaviour);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1649,7 +1645,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnAttackConfirmed_Postfix(BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing, bool isCritical, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnAttackConfirmed);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1666,7 +1662,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnSucceedEvade_Postfix(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnSucceedEvade);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1683,7 +1679,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnFailedEvade_Postfix(BattleActionModel attackerAction, BattleActionModel evadeAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnFailedEvade);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1700,7 +1696,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnSkillChangedEgo_Postfix(BattleActionModel action, bool isOverClock, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnSkillChangedEgo);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1717,7 +1713,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnChangeSkillBeforeCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnChangeSkillBeforeCompleteCommand);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1734,7 +1730,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnCancelAction_Postfix(BattleActionModel action, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnCancelAction);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1751,7 +1747,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnStartTurn_AfterLog_Postfix(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleUnitModel> targets, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnStartTurn_AfterLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1768,7 +1764,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnAttackCanceledByAbility_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnAttackCanceledByAbility);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1785,7 +1781,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnAfterParryingOnce_BeforeLog_Postfix(PARRYING_RESULT reuslt, BattleActionModel ownerAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnAfterParryingOnce_BeforeLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1802,7 +1798,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnKillTarget_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnKillTarget);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1819,7 +1815,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnBreakTarget_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnBreakTarget);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1836,7 +1832,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnDestroyTargetPart_Postfix(BattleActionModel action, CoinModel coinOrNull, BattleUnitModel_Abnormality_Part target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnDestroyTargetPart);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1853,7 +1849,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnAddCoinByAbility_Postfix(BattleActionModel action, CoinModel newCoin, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnAddCoinByAbility);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1870,7 +1866,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnCriticalIsActivated_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnCriticalIsActivated);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1878,7 +1874,7 @@ namespace CustomVanillaAbility.Patches
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { realAbility.OnCriticalIsActivated(action, coin, timing, affectKeywords.ConvertDictionary()); }
+                try { realAbility.OnCriticalIsActivated(action, coin, timing, affectKeywords); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
@@ -1887,7 +1883,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnCompleteCommand);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1904,7 +1900,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnUseCoinConsume_Postfix(BattleActionModel action, CoinModel coin, BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OnUseCoinConsume);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1921,7 +1917,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void AfterRecheckTargetList_Postfix(BattleActionModel action, bool valid, bool mainTargetAlive, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.AfterRecheckTargetList);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -1938,7 +1934,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void BeforeCompleteCommand_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, ref int newSkillID, SkillModel __instance, ref bool __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BeforeCompleteCommand);
 
             bool tempResult = false;
@@ -2004,7 +2000,7 @@ namespace CustomVanillaAbility.Patches
         public static void OverwriteCriticalResult_Postfix(BattleActionModel action, CoinModel coin, bool tempCritical, SkillModel __instance, ref bool __result, out Il2CppSystem.Nullable<bool> overwirteCriticalResult)
         {
             overwirteCriticalResult = false;
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OverwriteCriticalResult);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -2031,7 +2027,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OverwriteSkillIconID_Postfix(SkillModel __instance, ref string __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OverwriteSkillIconID);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -2056,7 +2052,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OverwriteCanDuel_Postfix(bool value, SkillModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.OverrideCanDuel);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -2076,7 +2072,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BlockLoseBuffByReactWithAction);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -2102,7 +2098,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.BlockGivingBuff);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -2128,7 +2124,7 @@ namespace CustomVanillaAbility.Patches
         {
             if (__result == true) return;
 
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, __instance.GetID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(SkillModel.ExpectedBlockGivingBuff);
 
             foreach (CustomAbilityBase ability in abilityList)

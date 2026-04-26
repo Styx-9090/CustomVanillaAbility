@@ -9,28 +9,22 @@ namespace CustomVanillaAbility
 {
     public static class CustomVanillaAbilityHelper
     {
-
-        public static Dictionary<TKey, TValue> ConvertDictionary<TKey, TValue>(this Il2CppSystem.Collections.Generic.Dictionary<TKey, TValue> il2cppDict)
-        {
-            var result = new Dictionary<TKey, TValue>(il2cppDict.Count);
-            foreach (var kv in il2cppDict) result.Add(kv.Key, kv.Value);
-            return result;
-        }
-
         public static bool IsOverride(this System.Reflection.MethodInfo method)
         {
             return method.GetBaseDefinition() != method;
         }
 
-        public static CustomSkillAbilityBase CreateCustomSkillAbility(Type skillAbilityType, SkillModel skill, int idx, AbilityData selectedData, Regex regex = null)
+        public static bool InitSetup<T>(string bundleName, long id, out T bundle) where T : CustomAbilityBundle
         {
-            CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(skillAbilityType);
-            ability.Init(skill, selectedData.scriptName, selectedData.Value, idx, selectedData.TurnLimit, selectedData.BuffData);
-            if (selectedData.ConditionalData != null) ability.AttachConditionalData(selectedData.ConditionalData);
-            if (selectedData.TurnLimit != 0) ability.InitLimitedActivateCountData(selectedData.TurnLimit);
-            ability.AttachNameData(selectedData.scriptName, regex);
+            bundle = null;
 
-            return ability;
+            if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(bundleName, out CustomAbilityBundle preBundle)) return false;
+            if (preBundle is not T finalBundle) return false;
+            if (!finalBundle.affectedLookup.Contains(id)) return false;
+            if (!finalBundle.ContainValue(id)) return false;
+
+            bundle = finalBundle;
+            return true;
         }
 
         public static bool TryToCreateRegexLinked_Skill(CustomAbilityBundle bundle, string varScriptName, SkillModel skill, int idx, AbilityData selectedData, out CustomSkillAbilityBase customSkillResult)
@@ -63,15 +57,38 @@ namespace CustomVanillaAbility
             return true;
         }
 
-        public static bool ProcessPatchListLogic(CustomAbilityBundle bundle, int instanceId, object instance,  out List<CustomAbilityBase> returnList)
+        public static CustomSkillAbilityBase CreateCustomSkillAbility(Type skillAbilityType, SkillModel skill, int idx, AbilityData selectedData, Regex regex = null)
+        {
+            CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(skillAbilityType);
+            ability.Init(skill, selectedData.scriptName, selectedData.Value, idx, selectedData.TurnLimit, selectedData.BuffData);
+            if (selectedData.ConditionalData != null) ability.AttachConditionalData(selectedData.ConditionalData);
+            if (selectedData.TurnLimit != 0) ability.InitLimitedActivateCountData(selectedData.TurnLimit);
+            ability.AttachNameData(selectedData.scriptName, regex);
+
+            return ability;
+        }
+
+        public static bool ProcessPatchListLogic_Skill(CustomSkillAbilityBundle bundle, long id, SkillModel instance,  out List<CustomAbilityBase> returnList)
         {
             returnList = null;
 
 
-            if (!bundle.affectedLookup.Contains(instanceId)) return false;
+            if (!bundle.affectedLookup.Contains(id)) return false;
             if (!bundle.customAbilityTable.TryGetValue(instance, out List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return false;
 
             returnList = abilityList;
+            return true;
+        }
+
+        public static bool ProcessPatchListLogic_Passive(CustomPassiveAbilityBundle bundle, long id, PassiveModel instance, out CustomPassiveAbilityHolder returnHolder)
+        {
+            returnHolder = null;
+
+
+            if (!bundle.affectedLookup.Contains(id)) return false;
+            if (!bundle.customAbilityHolderTable.TryGetValue(instance, out CustomPassiveAbilityHolder holder)) return false;
+
+            returnHolder = holder;
             return true;
         }
 

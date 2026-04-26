@@ -8,13 +8,7 @@ namespace CustomVanillaAbility.CustomClasses
         protected UNIT_FACTION _faction = UNIT_FACTION.NONE;
         protected PASSIVE_STATUS _status;
         protected PassiveModel _passiveModel;
-
-        protected bool _isActivated;
-        protected bool _isActivatedThisTurn;
-        protected bool _isActivatedOnThisBattle;
-
-        protected List<PassiveConditionStaticData> attributeResonanceCondition;
-        protected List<PassiveConditionStaticData> attributeStockCondition;
+        protected CustomPassiveAbilityHolder _passiveHolder;
 
         protected override ABILITY_SOURCE_TYPE _abilitySourceType
         {
@@ -46,17 +40,12 @@ namespace CustomVanillaAbility.CustomClasses
             get { return false; }
         }
 
-        public void Init(PassiveModel passive)
+        public void Init(CustomPassiveAbilityHolder passiveAbilityHolder)
         {
-            _passiveModel = passive;
-            _owner = passive.Owner;
+            _passiveHolder = passiveAbilityHolder;
+            _passiveModel = passiveAbilityHolder.passiveModel;
+            _owner = _passiveModel.Owner;
             _faction = _owner.Faction;
-
-            attributeResonanceCondition = passive.ClassInfo.GetAttributeResonanceConditionList();
-            attributeStockCondition = passive.ClassInfo.GetAttributeStockConditionList();
-
-            if ((attributeResonanceCondition == null || attributeResonanceCondition.Count <= 0) && (attributeStockCondition == null || attributeStockCondition.Count <= 0) == false) OnPassiveActivated();
-            else CheckActiveCondition();
             Init();
         }
 
@@ -75,104 +64,6 @@ namespace CustomVanillaAbility.CustomClasses
         public BattleUnitModel GetOwner()
         {
             return this._owner;
-        }
-
-        public PASSIVE_STATUS GetPassiveStatus()
-        {
-            return this._status;
-        }
-
-
-        protected virtual PASSIVE_STATUS CheckStatus()
-        {
-            return PASSIVE_STATUS.CAN_CHECK;
-        }
-
-        private void OnPassiveActivated()
-        {
-            if (_isActivated) return;
-
-            _status = PASSIVE_STATUS.ACTIVE;
-            _isActivated = true;
-
-            if (!_isActivatedThisTurn)
-            {
-                OnUpdateStatus(true);
-                _isActivatedThisTurn = true;
-            }
-
-            _isActivatedOnThisBattle = true;
-
-            if (this._owner.IsAbnormalityOrPart && !this._owner.IsShadowEnemy())
-            {
-                UnlockInformationManager instance = Singleton<UnlockInformationManager>.Instance;
-                instance.UnlockPassiveStatus(this._owner.GetOriginUnitID(), this._passiveModel.GetID());
-            }
-        }
-
-        private void OnPassiveDeactivated()
-        {
-            if (!_isActivated) return;
-
-            _status = PASSIVE_STATUS.DEACTIVE;
-            _isActivated = false;
-
-            if (_isActivatedThisTurn)
-            {
-                OnUpdateStatus(false);
-                _isActivatedThisTurn = false;
-            }
-        }
-
-        public void CheckActiveCondition()
-        {
-            var sinManager = Singleton<SinManager>.Instance;
-            var stockManager = sinManager._egoStockMangaer;
-            var resManager = sinManager._resManager;
-
-            bool stockOk = CheckStockConditions(stockManager);
-            bool resOk = CheckResonanceConditions(resManager);
-
-            if (stockOk && resOk) OnPassiveActivated();
-            else OnPassiveDeactivated();
-        }
-
-        private bool CheckResonanceConditions(SinManager.ResonanceManager resManager)
-        {
-            if (attributeResonanceCondition == null || attributeResonanceCondition.Count == 0) return true;
-
-            foreach (var data in attributeResonanceCondition)
-            {
-                int value = resManager.GetAttributeResonance(_faction, data.AttributeType);
-                if (value < data.Value) return false;
-            }
-
-            return true;
-        }
-
-        private bool CheckStockConditions(SinManager.EgoStockManager stockManager)
-        {
-            if (attributeStockCondition == null || attributeStockCondition.Count == 0) return true;
-
-            foreach (var data in attributeStockCondition)
-            {
-                int value = stockManager.GetAttributeStockNumberByAttributeType(_faction, data.AttributeType);
-                if (value < data.Value) return false;
-            }
-
-            return true;
-        }
-
-
-        protected void OnRoundEndAfter()
-        {
-            this.CheckActiveCondition();
-            if (this.IsActive()) this.Refresh_OnRoundEndAfter();
-        }
-
-        public virtual bool IsActive()
-        {
-            return this._status != PASSIVE_STATUS.DEACTIVE;
         }
 
         public virtual void OnUpdateStatus(bool deactivated)
@@ -957,7 +848,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void Refresh_OnRoundEndAfter()
+        public virtual void OnRoundEndAfter()
         {
 
         }

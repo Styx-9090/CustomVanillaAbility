@@ -18,8 +18,8 @@ namespace CustomVanillaAbility.Patches
 
             if (!skillFlag && !coinFlag) return;
 
-            skillBundle?.SafeClean();
-            coinBundle?.SafeClean();
+            skillBundle?.affectedLookup.Clear();
+            coinBundle?.affectedLookup.Clear();
 
             JSONArray skillJsonNodes;
             if (skillFlag && coinFlag)

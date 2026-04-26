@@ -7,13 +7,13 @@ namespace CustomVanillaAbility.Patches
 {
     public static class CustomVanillaAbilityPatches_BattleUnitModel
     {
-        public static CustomAbilityBundle _skillBundle = CustomVanillaAbilityPatches_SkillModel._skillBundle;
+        public static CustomSkillAbilityBundle _skillBundle = CustomVanillaAbilityPatches_SkillModel._skillBundle;
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.BeforeTakeAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void BeforeTakeAttackDamage_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, BattleUnitModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, action.GetSkillID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.BeforeTakeAttackDamage);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -31,7 +31,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnTakeAttackDamage_Postfix(BattleActionModel action, CoinModel coin, int realDmg, int hpDmg, BATTLE_EVENT_TIMING timing, bool isCritical, BattleUnitModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, action.GetSkillID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.OnTakeAttackDamage);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -48,7 +48,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, BattleUnitModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, action.GetSkillID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.OnEndCoin_BeforeLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -65,7 +65,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void ChangeAttackDamage_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, ref bool isCritical, BATTLE_EVENT_TIMING timing, BattleUnitModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic(_skillBundle, action.GetSkillID(), __instance, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.ChangeAttackDamage);
 
             int tempResult = resultDmg;
