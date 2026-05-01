@@ -226,7 +226,12 @@ namespace CustomVanillaAbility.CustomClasses
         {
             return 0;
         }
-        
+
+        public virtual int GetGiveBuffStackAdder(BattleActionModel action, SkillModel skill, BattleUnitModel target, BUFF_UNIQUE_KEYWORD buf, int turn, BATTLE_EVENT_TIMING timing)
+        {
+            return 0;
+        }
+
         public virtual int GetGiveBuffTurnAdder(BattleActionModel action, SkillModel skill, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD buf, int turn, BATTLE_EVENT_TIMING timing)
         {
             return 0;
@@ -324,7 +329,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetCoinScaleAdder(BattleActionModel action, CoinModel coin)
+        public virtual int GetCoinScaleAdder(BattleActionModel action, BattleActionModel oppoActionOrNull, CoinModel coin)
         {
             return 0;
         }
@@ -374,7 +379,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetAttackAdder()
+        public virtual int GetAttackAdder(BattleActionModel actionOrNull)
         {
             return 0;
         }
@@ -419,7 +424,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int ChangeTakeDamage(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType)
+        public virtual int ChangeTakeDamage(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType, BUFF_UNIQUE_KEYWORD keyword, BATTLE_EVENT_TIMING timing)
         {
             return 0;
         }
@@ -505,12 +510,12 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isCritical)
+        public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical)
         {
             return 0;
         }
 
-        public virtual float GetExpectedAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull)
+        public virtual float GetExpectedAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SinActionModel targetSinActionOrNull)
         {
             return 0;
         }

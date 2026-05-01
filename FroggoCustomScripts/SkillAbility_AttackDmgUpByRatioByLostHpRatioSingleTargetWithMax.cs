@@ -12,7 +12,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
             return ProcessDamage(CustomVanillaAbilityHelper.GetTargetModel(TARGET_STRING, action));
         }
 
-        public override float GetExpectedAttackDmgMultiplier(BattleActionModel action, BattleUnitModel target, CoinModel coin)
+        public override float GetExpectedAttackDmgMultiplier(BattleActionModel action, BattleUnitModel target, CoinModel coin, SinActionModel targetSinActionOrNull)
         {
             return ProcessDamage(CustomVanillaAbilityHelper.GetTargetModel(TARGET_STRING, action));
         }

@@ -27,6 +27,55 @@ namespace CustomVanillaAbility
             return true;
         }
 
+        public static CustomPassiveAbilityBase CreateCustomPassiveAbility(Type abilityType, string scriptName, Regex regex = null)
+        {
+            CustomPassiveAbilityBase ability = (CustomPassiveAbilityBase)Activator.CreateInstance(abilityType);
+            ability.AttachNameData(scriptName, regex);
+
+            return ability;
+        }
+
+        public static bool TryToCreateRegexLinked_Passive(CustomAbilityBundle bundle, string scriptName, out CustomPassiveAbilityBase customSkillResult)
+        {
+            customSkillResult = null;
+
+            if (!bundle.abilityRegTypeByLookup.TryGetValue(scriptName, out var regType))
+            {
+                Regex matchedRegex = null;
+                Type matchedType = null;
+
+                foreach (var reg in bundle.regexLookup)
+                {
+                    if (!reg.IsMatch(scriptName)) continue;
+                    matchedRegex = reg;
+
+                    if (bundle.abilityClassRegDict.TryGetValue(reg, out matchedType)) break;
+                    matchedRegex = null;
+                }
+
+                regType = (matchedRegex, matchedType);
+
+                bundle.abilityRegTypeByLookup[scriptName] = regType;
+                if (matchedType == null) return false;
+            }
+
+            if (regType.Item1 == null || regType.Item2 == null) return false;
+
+            customSkillResult = CustomVanillaAbilityHelper.CreateCustomPassiveAbility(regType.Item2, scriptName, regType.Item1);
+            return true;
+        }
+
+        public static CustomSkillAbilityBase CreateCustomSkillAbility(Type skillAbilityType, SkillModel skill, int idx, AbilityData selectedData, Regex regex = null)
+        {
+            CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(skillAbilityType);
+            ability.Init(skill, selectedData.scriptName, selectedData.Value, idx, selectedData.TurnLimit, selectedData.BuffData);
+            if (selectedData.ConditionalData != null) ability.AttachConditionalData(selectedData.ConditionalData);
+            if (selectedData.TurnLimit != 0) ability.InitLimitedActivateCountData(selectedData.TurnLimit);
+            ability.AttachNameData(selectedData.scriptName, regex);
+
+            return ability;
+        }
+
         public static bool TryToCreateRegexLinked_Skill(CustomAbilityBundle bundle, string varScriptName, SkillModel skill, int idx, AbilityData selectedData, out CustomSkillAbilityBase customSkillResult)
         {
             customSkillResult = null;
@@ -54,41 +103,6 @@ namespace CustomVanillaAbility
             if (regType.Item1 == null || regType.Item2 == null) return false;
 
             customSkillResult = CustomVanillaAbilityHelper.CreateCustomSkillAbility(regType.Item2, skill, idx, selectedData, regType.Item1);
-            return true;
-        }
-
-        public static CustomSkillAbilityBase CreateCustomSkillAbility(Type skillAbilityType, SkillModel skill, int idx, AbilityData selectedData, Regex regex = null)
-        {
-            CustomSkillAbilityBase ability = (CustomSkillAbilityBase)Activator.CreateInstance(skillAbilityType);
-            ability.Init(skill, selectedData.scriptName, selectedData.Value, idx, selectedData.TurnLimit, selectedData.BuffData);
-            if (selectedData.ConditionalData != null) ability.AttachConditionalData(selectedData.ConditionalData);
-            if (selectedData.TurnLimit != 0) ability.InitLimitedActivateCountData(selectedData.TurnLimit);
-            ability.AttachNameData(selectedData.scriptName, regex);
-
-            return ability;
-        }
-
-        public static bool ProcessPatchListLogic_Skill(CustomSkillAbilityBundle bundle, long id, SkillModel instance,  out List<CustomAbilityBase> returnList)
-        {
-            returnList = null;
-
-
-            if (!bundle.affectedLookup.Contains(id)) return false;
-            if (!bundle.customAbilityTable.TryGetValue(instance, out List<CustomAbilityBase> abilityList) || abilityList.Count <= 0) return false;
-
-            returnList = abilityList;
-            return true;
-        }
-
-        public static bool ProcessPatchListLogic_Passive(CustomPassiveAbilityBundle bundle, long id, PassiveModel instance, out CustomPassiveAbilityHolder returnHolder)
-        {
-            returnHolder = null;
-
-
-            if (!bundle.affectedLookup.Contains(id)) return false;
-            if (!bundle.customAbilityHolderTable.TryGetValue(instance, out CustomPassiveAbilityHolder holder)) return false;
-
-            returnHolder = holder;
             return true;
         }
 

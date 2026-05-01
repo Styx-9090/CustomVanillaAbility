@@ -1,19 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CustomVanillaAbility.CustomClasses;
 using HarmonyLib;
-using CustomVanillaAbility.CustomClasses;
+using System;
+using System.Collections.Generic;
 
 namespace CustomVanillaAbility.Patches
 {
     public static class CustomVanillaAbilityPatches_BattleUnitModel
     {
         public static CustomSkillAbilityBundle _skillBundle = CustomVanillaAbilityPatches_SkillModel._skillBundle;
+        public static CustomPassiveAbilityBundle _passiveBundle = CustomVanillaAbilityPatches_PassiveModel._passiveBundle;
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.BeforeTakeAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void BeforeTakeAttackDamage_Postfix(BattleActionModel action, BATTLE_EVENT_TIMING timing, BattleUnitModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!_skillBundle.ProcessPatchListLogic(action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.BeforeTakeAttackDamage);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -24,14 +25,31 @@ namespace CustomVanillaAbility.Patches
                 try {  realAbility.BeforeGiveAttackDamage(action, __instance, timing); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
+
+            var passiveList = __instance.GetAllActivatedPassives();
+            for (int i = 0; i < passiveList.Count; i++)
+            {
+                PassiveModel passive = passiveList[i];
+
+                if (!_passiveBundle.ProcessPatchListLogic(passive.GetID(), passive, out CustomPassiveAbilityHolder giverAbilityHolder)) continue;
+
+                foreach (CustomAbilityBase ability in giverAbilityHolder.passiveList)
+                {
+                    if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                    if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                    try { realAbility.BeforeTakeAttackDamage(action, timing); }
+                    catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
+                }
+            }
         }
 
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.OnTakeAttackDamage))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-        public static void OnTakeAttackDamage_Postfix(BattleActionModel action, CoinModel coin, int realDmg, int hpDmg, BATTLE_EVENT_TIMING timing, bool isCritical, BattleUnitModel __instance)
+        public static void OnTakeAttackDamage_Postfix(BattleActionModel action, CoinModel coin, int realDmg, int hpDamage, BATTLE_EVENT_TIMING timing, bool isCritical, BattleUnitModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!_skillBundle.ProcessPatchListLogic(action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.OnTakeAttackDamage);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -39,7 +57,7 @@ namespace CustomVanillaAbility.Patches
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { realAbility.OnSucceedAttack(action, coin, __instance, hpDmg, realDmg, isCritical, timing); }
+                try { realAbility.OnSucceedAttack(action, coin, __instance, hpDamage, realDmg, isCritical, timing); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
         }
@@ -48,7 +66,7 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OnEndCoin_BeforeLog_Postfix(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing, BattleUnitModel __instance)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!_skillBundle.ProcessPatchListLogic(action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.OnEndCoin_BeforeLog);
 
             foreach (CustomAbilityBase ability in abilityList)
@@ -65,10 +83,9 @@ namespace CustomVanillaAbility.Patches
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void ChangeAttackDamage_Postfix(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, ref bool isCritical, BATTLE_EVENT_TIMING timing, BattleUnitModel __instance, ref int __result)
         {
-            if (!CustomVanillaAbilityHelper.ProcessPatchListLogic_Skill(_skillBundle, action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
+            if (!_skillBundle.ProcessPatchListLogic(action.GetSkillID(), action.Skill, out System.Collections.Generic.List<CustomAbilityBase> abilityList)) return;
             string methodName = nameof(BattleUnitModel.ChangeAttackDamage);
 
-            int tempResult = resultDmg;
             foreach (CustomAbilityBase ability in abilityList)
             {
                 if (ability is not CustomSkillAbilityBase realAbility) continue;
@@ -76,7 +93,7 @@ namespace CustomVanillaAbility.Patches
 
                 try
                 {
-                    int changeAttackDmgResult = realAbility.ChangeAttackDamage(action, target, coin, tempResult, isCritical, timing);
+                    int changeAttackDmgResult = realAbility.ChangeAttackDamage(action, target, coin, resultDmg, isCritical, timing);
                     if (changeAttackDmgResult != resultDmg) { __result = changeAttackDmgResult; break; }
                 }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }

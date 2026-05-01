@@ -19,7 +19,7 @@ public class CustomVanillaAbilityMain : BasePlugin
 {
     public const string GUID = $"{AUTHOR}.{NAME}";
     public const string NAME = "CustomVanillaAbility";
-    public const string VERSION = "1.1.0";
+    public const string VERSION = "1.2.0";
     public const string AUTHOR = "Styx9090";
 
     public static CustomVanillaAbilityMain Instance;
@@ -29,6 +29,7 @@ public class CustomVanillaAbilityMain : BasePlugin
     internal System.Collections.Generic.Dictionary<string, CustomAbilityBundle> customAbilityDict;
     internal System.Collections.Generic.HashSet<int> generalAffectedHash;
     internal string skillPath;
+    internal string passivePath;
 
 
     public Type archiveSkillType;
@@ -38,6 +39,7 @@ public class CustomVanillaAbilityMain : BasePlugin
     {
         Instance = this;
         skillPath = @"custom_limbus_data\skill";
+        passivePath = @"custom_limbus_data\passive";
 
 
         customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
@@ -51,9 +53,10 @@ public class CustomVanillaAbilityMain : BasePlugin
 
 
         modHarmony = new Harmony(GUID);
-        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches));
+        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_Reload));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_BattleUnitModel));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
+        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_PassiveModel));
 
         RegisterCustomAbility<SkillAbility_StyxTesting>("StyxTesting");
         RegisterCustomAbility<SkillAbility_WhenBelowValueHPPercentageChangeSkill>("WhenBelowValueHPPercentageChangeSkill");
@@ -62,6 +65,8 @@ public class CustomVanillaAbilityMain : BasePlugin
         RegisterCustomAbility<SkillAbility_AtLessThanConditionalChangeSkill>("AtLessThanConditionalChangeSkill");
         RegisterCustomAbility<SkillAbility_ChangeDefenseOnConditional>("ChangeDefenseOnConditional");
         RegisterCustomAbility<SkillAbility_AtValueSpeedChangeSkill>("AtValueSpeedChangeSkill");
+
+        RegisterCustomAbility<PassiveAbility_StyxTestingPassive>("StyxTesting");
     }
 
     public void RegisterCustomAbility<T>(string abilityName) where T : CustomAbilityBase

@@ -17,6 +17,10 @@ namespace CustomVanillaAbility.CustomClasses
         public bool _isActivatedOnThisBattle;
         public List<CustomPassiveAbilityBase> passiveList;
 
+        public CustomPassiveAbilityHolder()
+        {
+
+        }
 
         public CustomPassiveAbilityHolder(List<CustomPassiveAbilityBase> customPassiveList)
         {
@@ -31,10 +35,10 @@ namespace CustomVanillaAbility.CustomClasses
             attributeResonanceCondition = passive.ClassInfo.GetAttributeResonanceConditionList();
             attributeStockCondition = passive.ClassInfo.GetAttributeStockConditionList();
 
+            foreach (CustomPassiveAbilityBase customPassive in passiveList) customPassive.Init(this);
+
             if ((attributeResonanceCondition == null || attributeResonanceCondition.Count <= 0) && (attributeStockCondition == null || attributeStockCondition.Count <= 0) == false) OnPassiveActivated();
             else CheckActiveCondition();
-
-            foreach (CustomPassiveAbilityBase customPassive in passiveList) customPassive.Init(this);
         }
 
         public void OnPassiveActivated()
@@ -90,8 +94,9 @@ namespace CustomVanillaAbility.CustomClasses
         {
             if (attributeResonanceCondition == null || attributeResonanceCondition.Count == 0) return true;
 
-            foreach (var data in attributeResonanceCondition)
+            for (int i = 0; i < attributeStockCondition.Count; i++)
             {
+                PassiveConditionStaticData data = attributeResonanceCondition[i];
                 int value = resManager.GetAttributeResonance(owner.Faction, data.AttributeType);
                 if (value < data.Value) return false;
             }
@@ -103,8 +108,9 @@ namespace CustomVanillaAbility.CustomClasses
         {
             if (attributeStockCondition == null || attributeStockCondition.Count == 0) return true;
 
-            foreach (var data in attributeStockCondition)
+            for (int i = 0; i < attributeStockCondition.Count; i++)
             {
+                PassiveConditionStaticData data = attributeStockCondition[i];
                 int value = stockManager.GetAttributeStockNumberByAttributeType(owner.Faction, data.AttributeType);
                 if (value < data.Value) return false;
             }

@@ -5,7 +5,7 @@ using System;
 
 namespace CustomVanillaAbility.Patches
 {
-    public static class CustomVanillaAbilityPatches
+    public static class CustomVanillaAbilityPatches_Reload
     {
         [HarmonyPatch(typeof(Data), nameof(Data.LoadCustomLocale), new[] { typeof(LOCALIZE_LANGUAGE) })]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -27,16 +27,27 @@ namespace CustomVanillaAbility.Patches
                 var combined = new System.Collections.Generic.HashSet<string>(skillBundle.abilityLookup);
                 combined.UnionWith(coinBundle.abilityLookup);
                 main.ScanModFiles(main.skillPath, combined, out skillJsonNodes);
+
+                skillBundle.nodes = skillJsonNodes;
+                coinBundle.nodes = skillJsonNodes;
             }
-            else if (skillFlag) main.ScanModFiles(main.skillPath, skillBundle.abilityLookup, out skillJsonNodes);
-            else main.ScanModFiles(main.skillPath, coinBundle.abilityLookup, out skillJsonNodes);
+            else if (skillFlag)
+            {
+                main.ScanModFiles(main.skillPath, skillBundle.abilityLookup, out skillJsonNodes);
+                skillBundle.nodes = skillJsonNodes;
+            }
+            else
+            {
+                main.ScanModFiles(main.skillPath, coinBundle.abilityLookup, out skillJsonNodes);
+                coinBundle.nodes = skillJsonNodes;
+            }
 
             foreach (JSONNode node in skillJsonNodes)
             {
                 JSONArray skillDataArray = node["skillData"]?.AsArray;
                 if (skillDataArray == null) continue;
 
-                var id = node["id"];
+                int id = node["id"];
 
                 foreach (JSONNode skillData in skillDataArray)
                 {
@@ -47,8 +58,7 @@ namespace CustomVanillaAbility.Patches
                         {
                             foreach (JSONNode ability in abilityList)
                             {
-                                var name = ability["scriptName"];
-
+                                string name = ability["scriptName"];
                                 if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, skillBundle.abilityLookup)) continue;
 
                                 skillBundle.affectedLookup.Add(id);
@@ -69,7 +79,7 @@ namespace CustomVanillaAbility.Patches
 
                             foreach (JSONNode ability in abilityList)
                             {
-                                var name = ability["scriptName"];
+                                string name = ability["scriptName"];
                                 if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, coinBundle.abilityLookup)) continue;
 
                                 coinBundle.affectedLookup.Add(id);
@@ -80,6 +90,28 @@ namespace CustomVanillaAbility.Patches
                 }
             }
 
+            bool passiveFlag = main.customAbilityDict.TryGetValue("passive", out var passiveBundle) && passiveBundle.availableState;
+
+            if (!passiveFlag) return;
+            main.ScanModFiles(main.passivePath, passiveBundle.abilityLookup, out JSONArray passiveJsonNodes);
+            passiveBundle.nodes = passiveJsonNodes;
+
+            foreach (JSONNode node in passiveJsonNodes)
+            {
+                JSONArray passiveDataArray = node["requireIDList"]?.AsArray;
+                if (passiveDataArray == null) continue;
+
+                int id = node["id"];
+
+                foreach (JSONNode passiveData in passiveDataArray)
+                {
+                    string name = passiveData.Value;
+                    if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, skillBundle.abilityLookup)) continue;
+
+                    skillBundle.affectedLookup.Add(id);
+                    break;
+                }
+            }
         }
 
         public static bool ContainsAny(string value, System.Collections.Generic.HashSet<string> lookup)

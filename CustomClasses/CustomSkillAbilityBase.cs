@@ -41,9 +41,6 @@ namespace CustomVanillaAbility.CustomClasses
         }
 
 
-        /// <summary>
-        /// Reminder to always use "base.Init(skill, scriptName, jsonValue, idx, turnLimit, info);" as the first line when overriding
-        /// </summary>
         /// /// <param name="info">This is actually never null, but I left it like in the original code just in-case</param>
         public void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
         {
