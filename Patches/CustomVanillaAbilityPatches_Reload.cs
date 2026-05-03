@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using CustomVanillaAbility.CustomClasses;
+using HarmonyLib;
 using Lethe.Patches;
 using SimpleJSON;
 using System;
@@ -13,8 +14,8 @@ namespace CustomVanillaAbility.Patches
         {
             var main = CustomVanillaAbilityMain.Instance;
 
-            bool skillFlag = main.customAbilityDict.TryGetValue("skill", out var skillBundle) && skillBundle.availableState;
-            bool coinFlag = main.customAbilityDict.TryGetValue("coin", out var coinBundle) && coinBundle.availableState;
+            bool skillFlag = main.customAbilityDict.TryGetValue("skill", out CustomAbilityBundle skillBundle) && skillBundle.availableState;
+            bool coinFlag = main.customAbilityDict.TryGetValue("coin", out CustomAbilityBundle coinBundle) && coinBundle.availableState;
 
             if (!skillFlag && !coinFlag) return;
 
@@ -106,9 +107,9 @@ namespace CustomVanillaAbility.Patches
                 foreach (JSONNode passiveData in passiveDataArray)
                 {
                     string name = passiveData.Value;
-                    if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, skillBundle.abilityLookup)) continue;
+                    if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, passiveBundle.abilityLookup)) continue;
 
-                    skillBundle.affectedLookup.Add(id);
+                    passiveBundle.affectedLookup.Add(id);
                     break;
                 }
             }

@@ -14,14 +14,14 @@ namespace CustomVanillaAbility
             return method.GetBaseDefinition() != method;
         }
 
-        public static bool InitSetup<T>(string bundleName, long id, out T bundle) where T : CustomAbilityBundle
+        public static bool InitSetup<T>(string bundleName, long id, object instance, out T bundle) where T : CustomAbilityBundle
         {
             bundle = null;
 
             if (!CustomVanillaAbilityMain.Instance.customAbilityDict.TryGetValue(bundleName, out CustomAbilityBundle preBundle)) return false;
             if (preBundle is not T finalBundle) return false;
             if (!finalBundle.affectedLookup.Contains(id)) return false;
-            if (!finalBundle.ContainValue(id)) return false;
+            if (finalBundle.ContainValue(instance)) return false;
 
             bundle = finalBundle;
             return true;

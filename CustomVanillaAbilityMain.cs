@@ -44,8 +44,8 @@ public class CustomVanillaAbilityMain : BasePlugin
 
         customAbilityDict = new System.Collections.Generic.Dictionary<string, CustomAbilityBundle>(StringComparer.OrdinalIgnoreCase);
         generalAffectedHash = [];
-        customAbilityDict.Add("skill", new CustomAbilityBundle());
-        customAbilityDict.Add("passive", new CustomAbilityBundle());
+        customAbilityDict.Add("skill", new CustomSkillAbilityBundle());
+        customAbilityDict.Add("passive", new CustomPassiveAbilityBundle());
 
 
         archiveSkillType = typeof(CustomSkillAbilityBase);
@@ -54,7 +54,7 @@ public class CustomVanillaAbilityMain : BasePlugin
 
         modHarmony = new Harmony(GUID);
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_Reload));
-        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_BattleUnitModel));
+        //modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_BattleUnitModel));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_PassiveModel));
 
@@ -78,6 +78,7 @@ public class CustomVanillaAbilityMain : BasePlugin
             if (abilityType.IsSubclassOf(archiveSkillType) || abilityType == archiveSkillType) customAbilityDict.TryGetValue("skill", out bundle);
             else if (abilityType.IsSubclassOf(archivePassiveType) || abilityType == archivePassiveType) customAbilityDict.TryGetValue("passive", out bundle);
 
+            CustomVanillaAbilityMain.Instance.Log.LogInfo($"{abilityType.Name} -> {(bundle == null ? "NULL BUNDLE" : bundle.GetType().Name)}");
             if (bundle == null || !bundle.abilityTypeHash.Add(abilityType)) return;
 
             bool isRegex = abilityName.Length > 3 && abilityName.StartsWith("Reg", StringComparison.OrdinalIgnoreCase);

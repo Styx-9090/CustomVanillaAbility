@@ -12,7 +12,7 @@ namespace CustomVanillaAbility.Patches
         public static void SafelyExitSkillInit(SkillModel __instance)
         {
             CustomVanillaAbilityMain main = CustomVanillaAbilityMain.Instance;
-            if (!CustomVanillaAbilityHelper.InitSetup<CustomSkillAbilityBundle>("skill", __instance.GetID(), out CustomSkillAbilityBundle bundle)) return;
+            if (!CustomVanillaAbilityHelper.InitSetup<CustomSkillAbilityBundle>("skill", __instance.GetID(), __instance, out CustomSkillAbilityBundle bundle)) return;
 
             System.Collections.Generic.List<CustomAbilityBase> newAbilities = [];
             int baseIndex = __instance.GetAbilityList().Count;
@@ -74,7 +74,7 @@ namespace CustomVanillaAbility.Patches
             }
 
             bundle.customAbilityTable.Add(__instance, newAbilities);
-            if (_skillBundle != bundle) _skillBundle = bundle;
+            _skillBundle = bundle;
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init), [])]
@@ -682,6 +682,7 @@ namespace CustomVanillaAbility.Patches
         //-----------------------------------------------------------------------------------------------------------------------------------------//
         //-----------------------------------------------------------------------------------------------------------------------------------------//
 
+        /*
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.OverwriteAttributeType))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void OverwriteAttributeType_Postfix(SkillModel __instance, ref ATTRIBUTE_TYPE __result)
@@ -709,6 +710,7 @@ namespace CustomVanillaAbility.Patches
 
             if (newType != ATTRIBUTE_TYPE.NONE) __result = newType;
         }
+        */
 
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.GetPrimeTargets))]

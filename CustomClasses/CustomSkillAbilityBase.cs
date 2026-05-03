@@ -53,7 +53,7 @@ namespace CustomVanillaAbility.CustomClasses
             this._bannedMethodTriggerNames.Add("AttachConditionalData");
             this._bannedMethodTriggerNames.Add("InitLimitedActivateCountData");
             this._bannedMethodTriggerNames.Add("ReturnUniqueData");
-            this.SetTrigger("skill");
+            this.SetTrigger();
             this.Init();
         }
 

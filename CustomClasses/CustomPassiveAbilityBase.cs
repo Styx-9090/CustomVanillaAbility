@@ -46,6 +46,14 @@ namespace CustomVanillaAbility.CustomClasses
             _passiveModel = passiveAbilityHolder.passiveModel;
             _owner = _passiveModel.Owner;
             _faction = _owner.Faction;
+
+            this._bannedMethodTriggerNames.Add("GetOwnerFaction");
+            this._bannedMethodTriggerNames.Add("GetOpponentFaction");
+            this._bannedMethodTriggerNames.Add("GetOwner");
+            this._bannedMethodTriggerNames.Add("OnUpdateStatus");
+            this._bannedMethodTriggerNames.Add("Init");
+
+            this.SetTrigger();
             Init();
         }
 
@@ -232,7 +240,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetGiveBuffTurnAdder(BattleActionModel action, SkillModel skill, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD buf, int turn, BATTLE_EVENT_TIMING timing)
+        public virtual int GetGiveBuffTurnAdder(BattleActionModel action, SkillModel skill, CoinModel coinOrNull, BattleUnitModel target, BUFF_UNIQUE_KEYWORD buf, int currentStack, int currentTurn, BATTLE_EVENT_TIMING timing)
         {
             return 0;
         }

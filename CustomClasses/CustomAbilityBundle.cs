@@ -28,12 +28,6 @@ namespace CustomVanillaAbility.CustomClasses
         {
             return false;
         }
-
-        public virtual bool ProcessPatchListLogic<T>(long id, object instance, out T returnObject)
-        {
-            returnObject = default;
-            return false;
-        }
     }
 
     public class CustomSkillAbilityBundle : CustomAbilityBundle
@@ -45,18 +39,12 @@ namespace CustomVanillaAbility.CustomClasses
             return customAbilityTable.TryGetValue((SkillModel)key, out _);
         }
 
-        public override bool ProcessPatchListLogic<T>(long id, object instance, out T returnObject)
+        public bool ProcessPatchListLogic(long id, SkillModel instance, out List<CustomAbilityBase> returnObject)
         {
-            returnObject = default;
-
-            if (typeof(T) != typeof(List<CustomAbilityBase>)) return false;
+            returnObject = null;
 
             if (!this.affectedLookup.Contains(id)) return false;
-            if (this.customAbilityTable.TryGetValue((SkillModel)instance, out var abilityList) && abilityList.Count > 0)
-            {
-                returnObject = (T)(object)abilityList;
-                return true;
-            }
+            if (this.customAbilityTable.TryGetValue(instance, out returnObject) && returnObject.Count > 0) return true;
 
             return false;
         }
@@ -65,25 +53,19 @@ namespace CustomVanillaAbility.CustomClasses
 
     public class CustomPassiveAbilityBundle : CustomAbilityBundle
     {
-        internal readonly ConditionalWeakTable<PassiveModel, CustomPassiveAbilityHolder> customAbilityHolderTable = new();
+        internal readonly Dictionary<PassiveModel, CustomPassiveAbilityHolder> customAbilityHolderTable = new();
 
         public override bool ContainValue(object key)
         {
-            return customAbilityHolderTable.TryGetValue((PassiveModel)key, out _);
+            return customAbilityHolderTable.ContainsKey((PassiveModel)key);
         }
 
-        public override bool ProcessPatchListLogic<T>(long id, object instance, out T returnObject)
+        public bool ProcessPatchListLogic(long id, PassiveModel instance, out CustomPassiveAbilityHolder returnObject)
         {
-            returnObject = default;
-
-            if (typeof(T) != typeof(CustomPassiveAbilityHolder)) return false;
+            returnObject = null;
 
             if (!this.affectedLookup.Contains(id)) return false;
-            if (this.customAbilityHolderTable.TryGetValue((PassiveModel)instance, out var abilityList))
-            {
-                returnObject = (T)(object)abilityList;
-                return true;
-            }
+            if (this.customAbilityHolderTable.TryGetValue(instance, out returnObject) && returnObject.passiveList.Count > 0) return true;
 
             return false;
         }

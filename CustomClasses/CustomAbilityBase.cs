@@ -84,7 +84,7 @@ namespace CustomVanillaAbility.CustomClasses
             this._extractedRegexData = regex?.Match(scriptName);
         }
 
-        public virtual void SetTrigger(string abilityType)
+        public virtual void SetTrigger()
         {
             this._triggerMethodHash = this.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Where(m => m.IsVirtual && !m.IsFinal && m.IsOverride() && !_bannedMethodTriggerNames.Any(banned => m.Name.Contains(banned)))

@@ -26,20 +26,24 @@ namespace CustomVanillaAbility.Patches
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
-            var passiveList = __instance.GetAllActivatedPassives();
-            for (int i = 0; i < passiveList.Count; i++)
+
+            if (_passiveBundle != null && _passiveBundle.availableState)
             {
-                PassiveModel passive = passiveList[i];
-
-                if (!_passiveBundle.ProcessPatchListLogic(passive.GetID(), passive, out CustomPassiveAbilityHolder giverAbilityHolder)) continue;
-
-                foreach (CustomAbilityBase ability in giverAbilityHolder.passiveList)
+                var passiveList = __instance.GetAllActivatedPassives();
+                for (int i = 0; i < passiveList.Count; i++)
                 {
-                    if (ability is not CustomPassiveAbilityBase realAbility) continue;
-                    if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+                    PassiveModel passive = passiveList[i];
 
-                    try { realAbility.BeforeTakeAttackDamage(action, timing); }
-                    catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
+                    if (!_passiveBundle.ProcessPatchListLogic(passive.GetID(), passive, out CustomPassiveAbilityHolder giverAbilityHolder)) continue;
+
+                    foreach (CustomAbilityBase ability in giverAbilityHolder.passiveList)
+                    {
+                        if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                        if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                        try { realAbility.BeforeTakeAttackDamage(action, timing); }
+                        catch (Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo($"Error at {methodName}: {ex}"); }
+                    }
                 }
             }
         }
