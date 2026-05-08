@@ -3,6 +3,7 @@ using HarmonyLib;
 using Lethe.Patches;
 using SimpleJSON;
 using System;
+using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility.Patches
 {
@@ -60,7 +61,7 @@ namespace CustomVanillaAbility.Patches
                             foreach (JSONNode ability in abilityList)
                             {
                                 string name = ability["scriptName"];
-                                if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, skillBundle.abilityLookup)) continue;
+                                if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, skillBundle)) continue;
 
                                 skillBundle.affectedLookup.Add(id);
                                 break;
@@ -81,7 +82,7 @@ namespace CustomVanillaAbility.Patches
                             foreach (JSONNode ability in abilityList)
                             {
                                 string name = ability["scriptName"];
-                                if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, coinBundle.abilityLookup)) continue;
+                                if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, coinBundle)) continue;
 
                                 coinBundle.affectedLookup.Add(id);
                                 break;
@@ -107,7 +108,7 @@ namespace CustomVanillaAbility.Patches
                 foreach (JSONNode passiveData in passiveDataArray)
                 {
                     string name = passiveData.Value;
-                    if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, passiveBundle.abilityLookup)) continue;
+                    if (string.IsNullOrWhiteSpace(name) || !ContainsAny(name, passiveBundle)) continue;
 
                     passiveBundle.affectedLookup.Add(id);
                     break;
@@ -115,9 +116,11 @@ namespace CustomVanillaAbility.Patches
             }
         }
 
-        public static bool ContainsAny(string value, System.Collections.Generic.HashSet<string> lookup)
+        public static bool ContainsAny(string value, CustomAbilityBundle bundle)
         {
-            foreach (string key in lookup) if (value.Contains(key)) return true;
+            foreach (string key in bundle.abilityLookup) if (value.StartsWith(key)) return true; 
+            foreach (Regex reg in bundle.regexLookup) if (reg.IsMatch(value)) return true;
+
             return false;
         }
     }

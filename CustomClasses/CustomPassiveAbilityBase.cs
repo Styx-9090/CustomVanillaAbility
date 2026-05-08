@@ -434,7 +434,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         public virtual int ChangeTakeDamage(BattleActionModel action, CoinModel coinOrNull, int resultDmg, DAMAGE_SOURCE_TYPE dmgSrcType, BUFF_UNIQUE_KEYWORD keyword, BATTLE_EVENT_TIMING timing)
         {
-            return 0;
+            return resultDmg;
         }
 
         public virtual int GetCoinProbAdder()

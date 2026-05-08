@@ -78,7 +78,7 @@ public class CustomVanillaAbilityMain : BasePlugin
             if (abilityType.IsSubclassOf(archiveSkillType) || abilityType == archiveSkillType) customAbilityDict.TryGetValue("skill", out bundle);
             else if (abilityType.IsSubclassOf(archivePassiveType) || abilityType == archivePassiveType) customAbilityDict.TryGetValue("passive", out bundle);
 
-            CustomVanillaAbilityMain.Instance.Log.LogInfo($"{abilityType.Name} -> {(bundle == null ? "NULL BUNDLE" : bundle.GetType().Name)}");
+            Log.LogInfo($"{abilityType.Name} -> {(bundle == null ? "NULL BUNDLE" : bundle.GetType().Name)}");
             if (bundle == null || !bundle.abilityTypeHash.Add(abilityType)) return;
 
             bool isRegex = abilityName.Length > 3 && abilityName.StartsWith("Reg", StringComparison.OrdinalIgnoreCase);

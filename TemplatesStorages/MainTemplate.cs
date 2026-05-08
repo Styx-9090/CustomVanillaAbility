@@ -8,12 +8,14 @@ using CustomVanillaAbility.CustomClasses;
 public class MainTemplate : BasePlugin
 {
     // Reminder the dependency is "Styx9090.CustomVanillaAbility"
+    // Putting it twice for safety
 
     public override void Load()
     {
         CustomVanillaAbilityMain vanillaAbilityMain = CustomVanillaAbilityMain.Instance;
 
         vanillaAbilityMain.RegisterCustomAbility<SkillAbility_TemplateSkill>("TemplateSkill");
+        vanillaAbilityMain.RegistedCustomAbility<SkillAbility_RegexTemplateSkill>(@"RegTemplateSkill(\d+)");
     }
 }
 

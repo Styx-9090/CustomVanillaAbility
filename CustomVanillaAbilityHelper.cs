@@ -14,6 +14,13 @@ namespace CustomVanillaAbility
             return method.GetBaseDefinition() != method;
         }
 
+        public static int CheckInheritance<T>(CustomPassiveAbilityBase customAbility, Type targetType, bool checkInheritance)
+        {
+            if (checkInheritance) if (customAbility is T) return 1;
+            else if (customAbility.GetType() == targetType) return 2;
+            return 0;
+        }
+
         public static bool InitSetup<T>(string bundleName, long id, object instance, out T bundle) where T : CustomAbilityBundle
         {
             bundle = null;
