@@ -54,7 +54,7 @@ public class CustomVanillaAbilityMain : BasePlugin
 
         modHarmony = new Harmony(GUID);
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_Reload));
-        //modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_BattleUnitModel));
+        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_BattleUnitModel));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_PassiveModel));
 

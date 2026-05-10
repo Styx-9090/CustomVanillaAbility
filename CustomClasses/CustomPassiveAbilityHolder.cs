@@ -2,6 +2,7 @@
 using CustomVanillaAbility.TestingClass;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace CustomVanillaAbility.CustomClasses
 {
@@ -254,7 +255,6 @@ namespace CustomVanillaAbility.CustomClasses
 
             return result;
         }
-
 
         //-----------------------------------------------------------------------------------------------------------------//
         //-----------------------------------------------------------------------------------------------------------------//
@@ -674,7 +674,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, SinActionModel expectedTargetSinActionOrNull)
+        public int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedCoinScaleAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -686,7 +686,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedCoinScaleAdder(action, coin, expectedTargetSinActionOrNull); }
+                try { result += realAbility.GetExpectedCoinScaleAdder(action, coin, rollType, expectedTargetSinActionOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -958,7 +958,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public int GetExpectedAttackHpDmgAdder(BattleUnitModel target)
+        public int GetExpectedAttackHpDmgAdder(BattleActionModel action, BattleUnitModel targetOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedAttackHpDmgAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -970,7 +970,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedAttackHpDmgAdder(target); }
+                try { result += realAbility.GetExpectedAttackHpDmgAdder(action, targetOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -1068,7 +1068,7 @@ namespace CustomVanillaAbility.CustomClasses
         //-----------------------------------------------------------------------------------------------------------------//
 
 
-        public virtual float GetTakeBuffStackMultiplier(SkillModel skill, BUFF_UNIQUE_KEYWORD buf)
+        public float GetTakeBuffStackMultiplier(SkillModel skill, BUFF_UNIQUE_KEYWORD buf)
         {
             string methodName = nameof(PassiveModel.GetTakeBuffStackMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1087,7 +1087,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetTakeBuffTurnMultiplier(SkillModel skill, BUFF_UNIQUE_KEYWORD buf)
+        public float GetTakeBuffTurnMultiplier(SkillModel skill, BUFF_UNIQUE_KEYWORD buf)
         {
             string methodName = nameof(PassiveModel.GetTakeBuffTurnMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1106,7 +1106,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetSinBuffDamageMultiplier(BUFF_UNIQUE_KEYWORD buff)
+        public float GetSinBuffDamageMultiplier(BUFF_UNIQUE_KEYWORD buff)
         {
             string methodName = nameof(PassiveModel.GetSinBuffDamageMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1125,7 +1125,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetTakeHpHealMultiplier(BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType)
+        public float GetTakeHpHealMultiplier(BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType)
         {
             string methodName = nameof(PassiveModel.GetTakeHpHealMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1144,7 +1144,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetTakeHpHealMultiplierPart(BattleUnitModel_Abnormality_Part part, BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType)
+        public float GetTakeHpHealMultiplierPart(BattleUnitModel_Abnormality_Part part, BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType)
         {
             string methodName = nameof(PassiveModel.GetTakeHpHealMultiplierPart);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1163,7 +1163,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetGiveBsGaugeUpMultiplier(bool onGiveExplosion, BattleActionModel actionOrNull, CoinModel coinOrNull)
+        public float GetGiveBsGaugeUpMultiplier(bool onGiveExplosion, BattleActionModel actionOrNull, CoinModel coinOrNull)
         {
             string methodName = nameof(PassiveModel.GetGiveBsGaugeUpMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1182,7 +1182,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetBsGaugeUpMultiplier(bool onGiveExplosion, BattleActionModel actionOrNull, CoinModel coinOrNull)
+        public float GetBsGaugeUpMultiplier(bool onGiveExplosion, BattleActionModel actionOrNull, CoinModel coinOrNull)
         {
             string methodName = nameof(PassiveModel.GetBsGaugeUpMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1201,7 +1201,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetMaxHpMultiplier()
+        public float GetMaxHpMultiplier()
         {
             string methodName = nameof(PassiveModel.GetMaxHpMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1220,7 +1220,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetMaxHpMultiplierPartToAbnormality()
+        public float GetMaxHpMultiplierPartToAbnormality()
         {
             string methodName = nameof(PassiveModel.GetMaxHpMultiplierPartToAbnormality);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1239,7 +1239,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetAtkResistAdder(ATK_BEHAVIOUR type)
+        public float GetAtkResistAdder(ATK_BEHAVIOUR type)
         {
             string methodName = nameof(PassiveModel.GetAtkResistAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1258,7 +1258,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetAtkResistMultiplier(ATK_BEHAVIOUR type)
+        public float GetAtkResistMultiplier(ATK_BEHAVIOUR type)
         {
             string methodName = nameof(PassiveModel.GetAtkResistMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1277,7 +1277,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetDefenseMultiplier()
+        public float GetDefenseMultiplier()
         {
             string methodName = nameof(PassiveModel.GetDefenseMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1296,7 +1296,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetAttributeResistAdder(global::ATTRIBUTE_TYPE type)
+        public float GetAttributeResistAdder(global::ATTRIBUTE_TYPE type)
         {
             string methodName = nameof(PassiveModel.GetAttributeResistAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1315,7 +1315,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetAttributeResistMultiplier(global::ATTRIBUTE_TYPE type)
+        public float GetAttributeResistMultiplier(global::ATTRIBUTE_TYPE type)
         {
             string methodName = nameof(PassiveModel.GetAttributeResistMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1334,7 +1334,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical)
+        public float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical)
         {
             string methodName = nameof(PassiveModel.GetAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1353,7 +1353,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetExpectedAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SinActionModel targetSinActionOrNull)
+        public float GetExpectedAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull, SinActionModel targetSinActionOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1372,7 +1372,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker, bool isCritical)
+        public float GetTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker, bool isCritical)
         {
             string methodName = nameof(PassiveModel.GetTakeAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1391,7 +1391,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetExpectedTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker)
+        public float GetExpectedTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker)
         {
             string methodName = nameof(PassiveModel.GetExpectedTakeAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1410,7 +1410,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetHpHealMultiplier(BattleUnitModel target)
+        public float GetHpHealMultiplier(BattleUnitModel target)
         {
             string methodName = nameof(PassiveModel.GetHpHealMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1429,7 +1429,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetCriticalChanceAdder(Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
+        public float GetCriticalChanceAdder(Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
         {
             string methodName = nameof(PassiveModel.GetCriticalChanceAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1448,7 +1448,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public virtual float GetCriticalDamageRatioResultMultiplier(BattleActionModel action)
+        public float GetCriticalDamageRatioResultMultiplier(BattleActionModel action)
         {
             string methodName = nameof(PassiveModel.GetCriticalDamageRatioResultMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1465,6 +1465,1655 @@ namespace CustomVanillaAbility.CustomClasses
             }
 
             return result;
+        }
+
+
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+        //-----------------------------------------------------------------------------------------------------------------//
+
+        public void OnAddUnit(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnAddUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAddUnit(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAddUnitPart(BattleUnitModel part, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnAddUnitPart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAddUnitPart(part, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAddUnitView(BattleUnitView view)
+        {
+            string methodName = nameof(PassiveModel.OnAddUnitView);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAddUnitView(view); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStageStart(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStageStart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStageStart(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnWaveStart(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnWaveStart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnWaveStart(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRoundStart_After_Event(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnRoundStart_After_Event);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRoundStart_After_Event(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRoundStart_After_Event_DeadOrRetreated(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnRoundStart_After_Event_DeadOrRetreated);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRoundStart_After_Event_DeadOrRetreated(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnReturnToField(int retreatTurn, BattleUnitModel triggerUnit, BUFF_UNIQUE_KEYWORD retreatKeyword, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnReturnToField);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnReturnToField(retreatTurn, triggerUnit, retreatKeyword, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnReturnToFieldOtherUnit_DeadOrRetreated(BattleUnitModel returnUnit, int retreatTurn, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnReturnToFieldOtherUnit_DeadOrRetreated);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnReturnToFieldOtherUnit_DeadOrRetreated(returnUnit, retreatTurn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnReleaseStandByOtherUnit_DeadOrRetreated(BattleUnitModel addedUnit, Il2CppSystem.Collections.Generic.List<BattleUnitModel> addedUnitList)
+        {
+            string methodName = nameof(PassiveModel.OnReleaseStandByOtherUnit_DeadOrRetreated);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnReleaseStandByOtherUnit_DeadOrRetreated(addedUnit, addedUnitList); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnReleaseStandBy(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnReleaseStandBy);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnReleaseStandBy(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnPanicOrLowMorale(PANIC_LEVEL level, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnPanicOrLowMorale);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnPanicOrLowMorale(level, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnCompleteCommand(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnCompleteCommand);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnCompleteCommand(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnBattleStart(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnBattleStart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBattleStart(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnBattleEnd(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnBattleEnd);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBattleEnd(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStartTurn_BeforeLog(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStartTurn_BeforeLog);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartTurn_BeforeLog(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStartTurn_AfterLog(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStartTurn_AfterLog);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartTurn_AfterLog(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStartDuel(BattleActionModel ownerAction, BattleActionModel opponentAction, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStartDuel);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartDuel(ownerAction, opponentAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnResult_OnAction(BattleActionModel action, CoinModel coin)
+        {
+            string methodName = nameof(PassiveModel.OnResult_OnAction);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnResult_OnAction(action, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnResult_OnParrying(BattleActionModel action, BattleActionModel oppoAction, CoinModel coin)
+        {
+            string methodName = nameof(PassiveModel.OnResult_OnParrying);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnResult_OnParrying(action, oppoAction, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnWinParrying(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnWinParrying);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnWinParrying(selfAction, oppoAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnLoseParrying(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnLoseParrying);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnLoseParrying(selfAction, oppoAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDuelAfter_BeforeLog(BattleActionModel selfAction, BattleActionModel oppoAction, int parryingCount, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnDuelAfter_BeforeLog);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDuelAfter_BeforeLog(selfAction, oppoAction, parryingCount, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnWinDuel(BattleActionModel selfAction, BattleActionModel oppoAction, int parryingCount, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnWinDuel);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnWinDuel(selfAction, oppoAction, parryingCount, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnLoseDuel(BattleActionModel selfAction, BattleActionModel oppoAction, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnLoseDuel);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnLoseDuel(selfAction, oppoAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnGiveHpDamage(BattleUnitModel target, int value, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnGiveHpDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnGiveHpDamage(target, value, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnGiveMpDamage(BattleUnitModel target, int value)
+        {
+            string methodName = nameof(PassiveModel.OnGiveMpDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnGiveMpDamage(target, value); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeMpDmg_SinBuff(int value, BATTLE_EVENT_TIMING timing, BUFF_UNIQUE_KEYWORD keyword)
+        {
+            string methodName = nameof(PassiveModel.OnTakeMpDmg_SinBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeMpDmg_SinBuff(value, timing, keyword); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void BeforeAttack(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.BeforeAttack);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.BeforeAttack(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnCriticalActivated(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnCriticalActivated);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnCriticalActivated(action, coin, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStartCoin(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStartCoin);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartCoin(action, coin, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndCoin_BeforeLog(BattleActionModel action, CoinModel coin, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnEndCoin_BeforeLog);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndCoin_BeforeLog(action, coin, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndCoin_AfterLog(BattleActionModel action, CoinModel coin)
+        {
+            string methodName = nameof(PassiveModel.OnEndCoin_AfterLog);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndCoin_AfterLog(action, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnSucceedEvade(BattleActionModel evadeAction, BattleActionModel attackAction, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnSucceedEvade);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnSucceedEvade(evadeAction, attackAction, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAttackConfirmed(BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnAttackConfirmed);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAttackConfirmed(action, coin, target, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnKillTarget(BattleActionModel actionOrNull, BattleUnitModel target, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnKillTarget);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnKillTarget(actionOrNull, target, dmgSrcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStartBehaviour(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStartBehaviour);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartBehaviour(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnSucceedAttack(BattleActionModel action, CoinModel coin, BattleUnitModel target, int finalDmg, int realDmg, bool isCritical, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnSucceedAttack);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnSucceedAttack(action, coin, target, finalDmg, realDmg, isCritical, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRollOneCoin_AfterAttack(BattleActionModel action, CoinModel coin)
+        {
+            string methodName = nameof(PassiveModel.OnRollOneCoin_AfterAttack);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRollOneCoin_AfterAttack(action, coin); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndAttack(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnEndAttack);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndAttack(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndAttackPart(BattleUnitModel_Abnormality_Part part, BattleActionModel action)
+        {
+            string methodName = nameof(PassiveModel.OnEndAttackPart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndAttackPart(part, action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndBehaviour(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnEndBehaviour);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndBehaviour(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndBehave_Refresh(BattleActionModel action)
+        {
+            string methodName = nameof(PassiveModel.OnEndBehave_Refresh);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndBehave_Refresh(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndTurn(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnEndTurn);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndTurn(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnActivateImmortality(BattleUnitModel immortalActivator, BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnActivateImmortality);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnActivateImmortality(immortalActivator, timing, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnActivateAbnormalityImmortality(BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnActivateAbnormalityImmortality);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnActivateAbnormalityImmortality(timing, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDestroyShield(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnDestroyShield);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDestroyShield(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRecoverBreak(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnRecoverBreak);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRecoverBreak(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnGiveBsGaugeUp(BattleUnitModel giver, BattleUnitModel target, int value, BATTLE_EVENT_TIMING timing, bool onExplosion, ABILITY_SOURCE_TYPE abilitySrc, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnGiveBsGaugeUp);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnGiveBsGaugeUp(giver, target, value, timing, onExplosion, abilitySrc, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void BeforePartTakeAttackDamage(BattleUnitModel_Abnormality abnormality, BattleUnitModel_Abnormality_Part part, BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.BeforePartTakeAttackDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.BeforePartTakeAttackDamage(abnormality, part, action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void BeforeGiveAttackDamage(BattleActionModel action, BattleUnitModel target, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.BeforeGiveAttackDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+
+                try { realAbility.BeforeGiveAttackDamage(action, target, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void BeforeTakeAttackDamage(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.BeforeTakeAttackDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+
+                try { realAbility.BeforeTakeAttackDamage(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeAttackDamage(BattleActionModel action, CoinModel coin, int totalDmg, int hpDmg, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnTakeAttackDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeAttackDamage(action, coin, totalDmg, hpDmg, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeAttackDamagePart(BattleUnitModel_Abnormality_Part part, BattleActionModel attackerAction, CoinModel coin, int value, BATTLE_EVENT_TIMING timing, bool isCritical)
+        {
+            string methodName = nameof(PassiveModel.OnTakeAttackDamagePart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeAttackDamagePart(part, attackerAction, coin, value, timing, isCritical); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEndEnemyAttack(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnEndEnemyAttack);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEndEnemyAttack(action, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnBeforeDefense(BattleActionModel action)
+        {
+            string methodName = nameof(PassiveModel.OnBeforeDefense);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBeforeDefense(action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRoundEnd(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnRoundEnd);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRoundEnd(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRetreat(BattleUnitModel triggerUnit, BUFF_UNIQUE_KEYWORD retreatKeyword, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnRetreat);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRetreat(triggerUnit, retreatKeyword, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRoundEnd_After()
+        {
+            string methodName = nameof(PassiveModel.OnRoundEnd_After);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRoundEnd_After(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStageEnd()
+        {
+            string methodName = nameof(PassiveModel.OnStageEnd);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStageEnd(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void RightBeforeOtherUnitGiveBuffBySkill(BattleUnitModel giver, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int stack, int turn, SkillModel skill, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.RightBeforeOtherUnitGiveBuffBySkill);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightBeforeOtherUnitGiveBuffBySkill(giver, target, bufKeyword, stack, turn, skill, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void RightAfterOtherUnitGiveBuffBySkill(BattleUnitModel giver, BattleUnitModel target, BUFF_UNIQUE_KEYWORD bufKeyword, int stack, int turn, SkillModel skill, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.RightAfterOtherUnitGiveBuffBySkill);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightAfterOtherUnitGiveBuffBySkill(giver, target, bufKeyword, stack, turn, skill, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void RightAfterLosingBuff(int loseStack, int loseTurn, BATTLE_EVENT_TIMING timing, BuffInfo info)
+        {
+            string methodName = nameof(PassiveModel.RightAfterLosingBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightAfterLosingBuff(loseStack, loseTurn, timing, info); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnSucceedToGiveSwitchToSpecialVibration(BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int prevStack, int prevTurn, int afterStack, int afterTurn, BATTLE_EVENT_TIMING timing, ABILITY_SOURCE_TYPE abilitySourceType)
+        {
+            string methodName = nameof(PassiveModel.OnSucceedToGiveSwitchToSpecialVibration);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnSucceedToGiveSwitchToSpecialVibration(target, keyword, prevStack, prevTurn, afterStack, afterTurn, timing, abilitySourceType); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void RightAfterGetAnyBuff(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, int activeRound, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel actionOrNull, int overStack, int overTurn)
+        {
+            string methodName = nameof(PassiveModel.RightAfterGetAnyBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightAfterGetAnyBuff(keyword, stack, turn, activeRound, srcType, timing, giverOrNull, actionOrNull, overStack, overTurn); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void RightAfterGetAnyBuffAtPart(BattleUnitModel_Abnormality_Part part, BUFF_UNIQUE_KEYWORD keyword, int stack, int activeRound, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.RightAfterGetAnyBuffAtPart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightAfterGetAnyBuffAtPart(part, keyword, stack, activeRound, srcType, timing, giverOrNull, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDestroy(BattleUnitModel destroyerOrNull, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnDestroy);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDestroy(destroyerOrNull, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnOtherPartDestroyed(BattleUnitModel_Abnormality_Part destroyedPart)
+        {
+            string methodName = nameof(PassiveModel.OnOtherPartDestroyed);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnOtherPartDestroyed(destroyedPart); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnPartDestroyed(BattleUnitModel_Abnormality_Part destroyedPart, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnPartDestroyed);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnPartDestroyed(destroyedPart, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnPartBreaked(BattleUnitModel_Abnormality_Part breakedPart, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnPartBreaked);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnPartBreaked(breakedPart, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnPartRecoverBreak(BattleUnitModel_Abnormality_Part recoveredPart, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnPartRecoverBreak);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnPartRecoverBreak(recoveredPart, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnRegenerate(BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnRegenerate);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnRegenerate(timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnPartRegenerate(BattleUnitModel_Abnormality_Part part, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnPartRegenerate);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnPartRegenerate(part, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnZeroHp()
+        {
+            string methodName = nameof(PassiveModel.OnZeroHp);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnZeroHp(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDie(BattleUnitModel killer, BattleActionModel actionOrNull, DAMAGE_SOURCE_TYPE dmgSrcType, BUFF_UNIQUE_KEYWORD keyword, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnDie);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDie(killer, actionOrNull, dmgSrcType, keyword, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnBreak(BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BATTLE_EVENT_TIMING timing, bool isBreakForcely)
+        {
+            string methodName = nameof(PassiveModel.OnBreak);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBreak(attackerOrNull, actionOrNull, timing, isBreakForcely); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnEnemyBrokenByAttacker(BattleActionModel actionOrNull, BattleUnitModel target, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnEnemyBrokenByAttacker);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnEnemyBrokenByAttacker(actionOrNull, target, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDieOtherUnit(BattleUnitModel killer, BattleUnitModel dead, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE dmgSrcType, BUFF_UNIQUE_KEYWORD keyword)
+        {
+            string methodName = nameof(PassiveModel.OnDieOtherUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDieOtherUnit(killer, dead, timing, dmgSrcType, keyword); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnBreakOtherUnit(BattleUnitModel breakedUnit, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnBreakOtherUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBreakOtherUnit(breakedUnit, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDiscardSinOtherUnit(BattleUnitModel discardUnit, UnitSinModel sin, BATTLE_EVENT_TIMING timing, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnDiscardSinOtherUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDiscardSinOtherUnit(discardUnit, sin, timing, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnDiscardSin(UnitSinModel sin, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnDiscardSin);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnDiscardSin(sin, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnVibrationExplosionOtherUnit(BattleUnitModel explodedUnit, BattleUnitModel giverOrNull, BattleActionModel actionOrNull, ABILITY_SOURCE_TYPE abilitySrc, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnVibrationExplosionOtherUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnVibrationExplosionOtherUnit(explodedUnit, giverOrNull, actionOrNull, abilitySrc, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeAttackDamageOtherUnit(BattleActionModel action, int realDmg, int hpDmg, BattleUnitModel attackedUnit, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnTakeAttackDamageOtherUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeAttackDamageOtherUnit(action, realDmg, hpDmg, attackedUnit, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnUseBloodDinnerUnit(BattleUnitModel usedUnit, int stack, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnUseBloodDinnerUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnUseBloodDinnerUnit(usedUnit, stack, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnGiveImmortalState(BattleUnitModel immortalTaker, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnGiveImmortalState);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnGiveImmortalState(immortalTaker, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAfterTryTakeHpHeal(BattleUnitModel healerOrNull, int tryHeal, int resultHeal, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnAfterTryTakeHpHeal);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAfterTryTakeHpHeal(healerOrNull, tryHeal, resultHeal, srcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnBeforeTryTakeMpHeal(BattleUnitModel healerOrNull, int tryHeal, int resultHeal, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnBeforeTryTakeMpHeal);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnBeforeTryTakeMpHeal(healerOrNull, tryHeal, resultHeal, srcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAfterTryTakeMpHeal(BattleUnitModel healerOrNull, int tryHeal, int resultHeal, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnAfterTryTakeMpHeal);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAfterTryTakeMpHeal(healerOrNull, tryHeal, resultHeal, srcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void CheckLoseBuffStackAndTurn(BuffInfo info, int loseStack, int loseTurn, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.CheckLoseBuffStackAndTurn);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.CheckLoseBuffStackAndTurn(info, loseStack, loseTurn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnStartPhase(PHASE phase, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnStartPhase);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnStartPhase(phase, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeHpDamage(int finalDamage, int hpDamage, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BUFF_UNIQUE_KEYWORD keyword)
+        {
+            string methodName = nameof(PassiveModel.OnTakeHpDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeHpDamage(finalDamage, hpDamage, timing, sourceType, attackerOrNull, actionOrNull, keyword); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeHpDamagePart(BattleUnitModel_Abnormality_Part part, int finalDamage, int hpDamage, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BUFF_UNIQUE_KEYWORD keyword)
+        {
+            string methodName = nameof(PassiveModel.OnTakeHpDamagePart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeHpDamagePart(part, finalDamage, hpDamage, timing, sourceType, attackerOrNull, actionOrNull, keyword); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeHpDamageOtherUnit(BattleUnitModel damaged, int finalDamage, int hpDamage, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, Il2CppSystem.Collections.Generic.List<BattleUnitModel> relatedUnitsOrNull, BUFF_UNIQUE_KEYWORD keyword)
+        {
+            string methodName = nameof(PassiveModel.OnTakeHpDamageOtherUnit);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeHpDamageOtherUnit(damaged, finalDamage, hpDamage, timing, sourceType, attackerOrNull, actionOrNull, relatedUnitsOrNull, keyword); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeAttackConfirmed(BattleActionModel action, CoinModel coin, BattleUnitModel attacker, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnTakeAttackConfirmed);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeAttackConfirmed(action, coin, attacker, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnChangeHp(int oldHp, int newHp, DAMAGE_SOURCE_TYPE dmgSrcType, BATTLE_EVENT_TIMING timing, BattleUnitModel attackerOrNull, BattleActionModel actionOrNull, BUFF_UNIQUE_KEYWORD keyword)
+        {
+            string methodName = nameof(PassiveModel.OnChangeHp);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnChangeHp(oldHp, newHp, dmgSrcType, timing, attackerOrNull, actionOrNull, keyword); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnChangeMp(int oldMp, int newMp)
+        {
+            string methodName = nameof(PassiveModel.OnChangeMp);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnChangeMp(oldMp, newMp); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnChangeMpOther(BattleUnitModel mpChangeUnit, int oldMp, int newMp)
+        {
+            string methodName = nameof(PassiveModel.OnChangeMpOther);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnChangeMpOther(mpChangeUnit, oldMp, newMp); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeMpDamage(BattleUnitModel attacker, int value, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnTakeMpDamage);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeMpDamage(attacker, value, timing, sourceType, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnTakeMpDamageOther(BattleUnitModel mpDmgUnit, BattleUnitModel attackerOrNull, int value, BATTLE_EVENT_TIMING timing, DAMAGE_SOURCE_TYPE sourceType, BattleActionModel actionOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnTakeMpDamageOther);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnTakeMpDamageOther(mpDmgUnit, attackerOrNull, value, timing, sourceType, actionOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAfterTryTakeMpHealOther(BattleUnitModel mpHealUnit, BattleUnitModel healerOrNull, int tryHeal, int resultHeal, ABILITY_SOURCE_TYPE srcType, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnAfterTryTakeMpHealOther);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAfterTryTakeMpHealOther(mpHealUnit, healerOrNull, tryHeal, resultHeal, srcType, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnUseBuffTurnBySkill(SkillModel skill, BUFF_UNIQUE_KEYWORD bufKeyword, int turn, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnUseBuffTurnBySkill);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnUseBuffTurnBySkill(skill, bufKeyword, turn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnUseBuff(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnUseBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnUseBuff(keyword, stack, turn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void BeforeUseBuff(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.BeforeUseBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.BeforeUseBuff(keyword, stack, turn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnPickSkills()
+        {
+            string methodName = nameof(PassiveModel.OnPickSkills);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnPickSkills(); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnAddActionToPart(BattleUnitModel_Abnormality_Part part, BattleActionModel action)
+        {
+            string methodName = nameof(PassiveModel.OnAddActionToPart);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnAddActionToPart(part, action); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void RightAfterDestroyAnyBuff(BuffInfo destroyedBuffInfo, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.RightAfterDestroyAnyBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.RightAfterDestroyAnyBuff(destroyedBuffInfo, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnCanceledByLackOfBuffsAtStartCoin(BattleActionModel action, CoinModel coin, Il2CppSystem.Collections.Generic.List<BUFF_UNIQUE_KEYWORD> lackOfBuffs, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnCanceledByLackOfBuffsAtStartCoin);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnCanceledByLackOfBuffsAtStartCoin(action, coin, lackOfBuffs, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnFailedToGetBuff(BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, int activeRound, ABILITY_SOURCE_TYPE abilitySrcType, BATTLE_EVENT_TIMING timing, BattleUnitModel giverOrNull)
+        {
+            string methodName = nameof(PassiveModel.OnFailedToGetBuff);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnFailedToGetBuff(keyword, stack, turn, activeRound, abilitySrcType, timing, giverOrNull); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
+        }
+
+        public void OnUseCoinConsume(BattleUnitModel owner, BattleActionModel action, CoinModel coin, BUFF_UNIQUE_KEYWORD keyword, int stack, int turn, BATTLE_EVENT_TIMING timing)
+        {
+            string methodName = nameof(PassiveModel.OnUseCoinConsume);
+            if (!this.timingDict.ContainsKey(methodName)) return;
+
+            foreach (CustomAbilityBase ability in this.passiveList)
+            {
+                if (ability is not CustomPassiveAbilityBase realAbility) continue;
+                if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
+
+                try { realAbility.OnUseCoinConsume(owner, action, coin, keyword, stack, turn, timing); }
+                catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
+            }
         }
     }
 }

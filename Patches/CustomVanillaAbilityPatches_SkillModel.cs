@@ -75,6 +75,7 @@ namespace CustomVanillaAbility.Patches
 
             bundle.customAbilityTable.Add(__instance, newAbilities);
             _skillBundle = bundle;
+            CustomVanillaAbilityPatches_BattleUnitModel._skillBundle = bundle;
         }
 
         [HarmonyPatch(typeof(SkillModel), nameof(SkillModel.Init), [])]

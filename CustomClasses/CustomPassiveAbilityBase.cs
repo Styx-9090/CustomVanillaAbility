@@ -342,7 +342,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, SinActionModel expectedTargetSinActionOrNull)
+        public virtual int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
         {
             return 0;
         }
@@ -417,7 +417,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetExpectedAttackHpDmgAdder(BattleUnitModel target)
+        public virtual int GetExpectedAttackHpDmgAdder(BattleActionModel action, BattleUnitModel targetOrNull)
         {
             return 0;
         }
@@ -696,7 +696,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void BeforeGiveAttackDamage(BattleActionModel action, CoinModel coin, BattleUnitModel target, BATTLE_EVENT_TIMING timing)
+        public virtual void BeforeGiveAttackDamage(BattleActionModel action, BattleUnitModel target, BATTLE_EVENT_TIMING timing)
         {
 
         }
@@ -861,7 +861,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnRoundEndAfter()
+        public virtual void OnRoundEnd_After()
         {
 
         }
@@ -886,7 +886,7 @@ namespace CustomVanillaAbility.CustomClasses
 
         }
 
-        public virtual void OnSwitchTargetVibrationToSpecial(BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int prevStack, int prevTurn, int afterStack, int afterTurn, BATTLE_EVENT_TIMING timing, ABILITY_SOURCE_TYPE abilitySourceType)
+        public virtual void OnSucceedToGiveSwitchToSpecialVibration(BattleUnitModel target, BUFF_UNIQUE_KEYWORD keyword, int prevStack, int prevTurn, int afterStack, int afterTurn, BATTLE_EVENT_TIMING timing, ABILITY_SOURCE_TYPE abilitySourceType)
         {
 
         }

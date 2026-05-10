@@ -1,8 +1,6 @@
 ﻿using CustomVanillaAbility.CustomClasses;
 using HarmonyLib;
-using Il2CppSystem.Collections.Generic;
 using System;
-using System.Text.RegularExpressions;
 
 namespace CustomVanillaAbility.Patches
 {
@@ -73,11 +71,8 @@ namespace CustomVanillaAbility.Patches
             passiveHolder.Init(__instance);
             bundle.customAbilityHolderTable.Add(__instance, passiveHolder);
 
-            if (_passiveBundle != bundle)
-            {
-                _passiveBundle = bundle;
-                CustomVanillaAbilityPatches_BattleUnitModel._passiveBundle = bundle;
-            }
+            _passiveBundle = bundle;
+            CustomVanillaAbilityPatches_BattleUnitModel._passiveBundle = bundle;
         }
 
         [HarmonyPatch(typeof(PassiveModel), nameof(PassiveModel.Init))]

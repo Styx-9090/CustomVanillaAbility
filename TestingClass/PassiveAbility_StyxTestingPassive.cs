@@ -11,7 +11,7 @@ namespace CustomVanillaAbility.TestingClass
             return 8;
         }
 
-        public override int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, SinActionModel expectedTargetSinActionOrNull)
+        public override int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
         {
             return 8;
         }

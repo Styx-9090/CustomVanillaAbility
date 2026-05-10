@@ -390,10 +390,12 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
+        /*
         public virtual int ChangeAttackDamage(BattleActionModel action, BattleUnitModel target, CoinModel coin, int resultDmg, bool isCritical, BATTLE_EVENT_TIMING timing)
         {
             return resultDmg;
         }
+        */
 
         //------------------------------------------------------------------------------------------//
         //------------------------------------------------------------------------------------------//
