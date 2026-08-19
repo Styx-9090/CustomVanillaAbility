@@ -138,7 +138,7 @@ namespace CustomVanillaAbility.Patches
         //-----------------------------------------------------------------------------------------------------------------------------------------//
         //-----------------------------------------------------------------------------------------------------------------------------------------//
 
-        [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetCoinScaleAdder))]
+        [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleActionModel.GetCoinScaleAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCoinScaleAdder_Postfix(BattleActionModel action, BattleActionModel oppoActionOrNull, CoinModel coin, BattleUnitModel __instance, ref int __result)
         {
@@ -394,6 +394,7 @@ namespace CustomVanillaAbility.Patches
             }
         }
 
+        /*
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetMaxHpAdderPart))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetMaxHpAdderPart_Postfix(BattleUnitModel_Abnormality_Part part, BattleUnitModel __instance, ref int __result)
@@ -407,6 +408,7 @@ namespace CustomVanillaAbility.Patches
                 __result += abilityHolder.GetMaxHpAdderPart(part);
             }
         }
+        */
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetSpeedAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -776,6 +778,7 @@ namespace CustomVanillaAbility.Patches
             }
         }
 
+        /*
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetTakeHpHealMultiplierPart))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetTakeHpHealMultiplierPart_Postfix(BattleUnitModel_Abnormality_Part part, BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType, BattleUnitModel __instance, ref float __result)
@@ -789,6 +792,7 @@ namespace CustomVanillaAbility.Patches
                 __result += abilityHolder.GetTakeHpHealMultiplierPart(part, healerOrNull, srcType);
             }
         }
+        */
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetGiveBsGaugeUpMultiplier))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -832,6 +836,7 @@ namespace CustomVanillaAbility.Patches
             }
         }
 
+        /*
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetMaxHpMultiplierPartToAbnormality))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetMaxHpMultiplierPartToAbnormality_Postfix(BattleUnitModel __instance, ref float __result)
@@ -845,6 +850,7 @@ namespace CustomVanillaAbility.Patches
                 __result += abilityHolder.GetMaxHpMultiplierPartToAbnormality();
             }
         }
+        */
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetAtkResistAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
@@ -986,6 +992,7 @@ namespace CustomVanillaAbility.Patches
             }
         }
 
+        /*
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetCriticalChanceAdder))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
         public static void GetCriticalChanceAdder_Postfix(Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords, BattleUnitModel __instance, ref float __result)
@@ -999,6 +1006,7 @@ namespace CustomVanillaAbility.Patches
                 __result += abilityHolder.GetCriticalChanceAdder(affectKeywords);
             }
         }
+        */
 
         [HarmonyPatch(typeof(BattleUnitModel), nameof(BattleUnitModel.GetCriticalDamageRatioResultMultiplier))]
         [HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]

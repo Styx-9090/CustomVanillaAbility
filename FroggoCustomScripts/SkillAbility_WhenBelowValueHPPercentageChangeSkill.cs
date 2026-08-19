@@ -18,6 +18,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
         public override void Init()
         {
             neededHP = this._info.Value;
+            base.Init();
         }
 
         protected float neededHP;

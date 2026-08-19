@@ -19,8 +19,8 @@ namespace CustomVanillaAbility.FroggoCustomScripts
         public override void Init()
         { 
             neededSpeed = this._info.IntegerValue;
+            base.Init();
         }
-
 
         protected int neededSpeed;
     }

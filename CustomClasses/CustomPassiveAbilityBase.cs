@@ -342,7 +342,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
+        public virtual int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, BattleActionModel oppoActionOrNull, SinActionModel expectedTargetSinActionOrNull)
         {
             return 0;
         }
@@ -372,17 +372,17 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetExpectedSkillPowerAdder(BattleActionModel action, List<BattleActionModel> prevActions, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
+        public virtual int GetExpectedSkillPowerAdder(BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
         {
             return 0;
         }
 
-        public virtual int GetSkillPowerResultAdder(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        public virtual int GetSkillPowerResultAdder(BattleActionModel action, BATTLE_EVENT_TIMING timing, BattleActionModel attackerActionOrNull, bool calculateSystemAdder, CoinModel coinOrNull)
         {
             return 0;
         }
 
-        public virtual int GetExpectedSkillPowerResultAdder(BattleActionModel action, List<BattleActionModel> prevActions, BattleUnitModel expectedTarget)
+        public virtual int GetExpectedSkillPowerResultAdder(BattleActionModel action, Il2CppSystem.Collections.Generic.List<int> indexes, SinActionModel opppoSinActionOrNull, BattleActionModel oppoActionOrNull)
         {
             return 0;
         }
@@ -397,12 +397,12 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetAttackDmgAdder(BattleActionModel action, BattleUnitModel target)
+        public virtual int GetAttackDmgAdder(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel)
         {
             return 0;
         }
 
-        public virtual int GetExpectedAttackDmgAdder(BattleActionModel action, BattleUnitModel targetOrNull)
+        public virtual int GetExpectedAttackDmgAdder(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull)
         {
             return 0;
         }
@@ -412,12 +412,12 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual int GetAttackHpDmgAdder(BattleUnitModel target)
+        public virtual int GetAttackHpDmgAdder(BattleActionModel action, CoinModel coin, bool isWinDuel, BattleUnitModel target)
         {
             return 0;
         }
 
-        public virtual int GetExpectedAttackHpDmgAdder(BattleActionModel action, BattleUnitModel targetOrNull)
+        public virtual int GetExpectedAttackHpDmgAdder(BattleActionModel action, CoinModel coin, bool isWinDuel, BattleUnitModel targetOrNull)
         {
             return 0;
         }
@@ -463,7 +463,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual float GetTakeHpHealMultiplier(BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType)
+        public virtual float GetTakeHpHealMultiplier(BattleUnitModel healerOrNull, BattleActionModel actionOrNull, ABILITY_SOURCE_TYPE srcType)
         {
             return 0;
         }
@@ -473,7 +473,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual float GetGiveBsGaugeUpMultiplier(bool onGiveExplosion, BattleActionModel actionOrNull, CoinModel coinOrNull)
+        public virtual float GetGiveBsGaugeUpMultiplier(BattleActionModel action, bool onGiveExplosion, BattleUnitModel target, CoinModel coinOrNull)
         {
             return 0;
         }
@@ -518,7 +518,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical)
+        public virtual float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, bool isOneSideAttack, OneCoinLog_Attack forEditorItCanBeNull)
         {
             return 0;
         }
@@ -528,12 +528,12 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual float GetTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker, bool isCritical)
+        public virtual float GetTakeAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel attacker, bool isCritical)
         {
             return 0;
         }
 
-        public virtual float GetExpectedTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker)
+        public virtual float GetExpectedTakeAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel attacker)
         {
             return 0;
         }
@@ -543,7 +543,7 @@ namespace CustomVanillaAbility.CustomClasses
             return 0;
         }
 
-        public virtual float GetCriticalChanceAdder(Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
+        public virtual float GetCriticalChanceAdder(BattleActionModel action, CoinModel coin, Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
         {
             return 0;
         }

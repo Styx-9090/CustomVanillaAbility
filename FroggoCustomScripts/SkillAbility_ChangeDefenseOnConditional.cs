@@ -24,6 +24,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
         public override void Init()
         {
             selectedBuff = CustomBuffs.ParseBuffUniqueKeyword(this._info.buffKeyword);
+            base.Init();
         }
 
         protected BUFF_UNIQUE_KEYWORD selectedBuff;

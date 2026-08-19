@@ -41,7 +41,7 @@ namespace CustomVanillaAbility.CustomClasses
         }
 
 
-        /// /// <param name="info">This is actually never null, but I left it like in the original code just in-case</param>
+        /// /// <param name="info">This is actually never optional, but I left it from the original code</param>
         public void Init(SkillModel skill, string scriptName, float jsonValue, int idx, int turnLimit, BuffReferenceData info = null)
         {
             this._skillModel = skill;

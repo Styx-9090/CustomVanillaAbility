@@ -20,6 +20,7 @@ namespace CustomVanillaAbility.FroggoCustomScripts
         public override void Init()
         {
             neededMP = this._info.IntegerValue;
+            base.Init();
         }
 
 

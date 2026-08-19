@@ -56,7 +56,7 @@ public class CustomVanillaAbilityMain : BasePlugin
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_Reload));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_BattleUnitModel));
         modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_SkillModel));
-        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_PassiveModel));
+        modHarmony.PatchAll(typeof(CustomVanillaAbilityPatches_Passives));
 
         RegisterCustomAbility<SkillAbility_StyxTesting>("StyxTesting");
         RegisterCustomAbility<SkillAbility_WhenBelowValueHPPercentageChangeSkill>("WhenBelowValueHPPercentageChangeSkill");

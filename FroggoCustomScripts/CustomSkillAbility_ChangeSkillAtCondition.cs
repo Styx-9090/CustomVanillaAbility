@@ -8,6 +8,8 @@ namespace CustomVanillaAbility.FroggoCustomScripts
     {
         protected SkillModel GetSelectedSkill(BattleUnitModel unit)
         {
+            if (selectedSkillID == 0) CustomVanillaAbilityMain.Instance.Log.LogWarning($"selectedSkillID is 0 in ChangeSkillAtCondition from skill with ID/Name {this._skillModel.GetID()}/{this._skillModel.GetSkillName()}");
+
             SkillModel foundSkill = null;
             BattleUnitModel owner = unit;
             Il2CppSystem.Collections.Generic.List<SkillModel> skillList = owner.GetSkillList();

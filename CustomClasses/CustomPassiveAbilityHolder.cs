@@ -48,6 +48,7 @@ namespace CustomVanillaAbility.CustomClasses
             {
                 customPassive.Init(this);
                 foreach (string timing in customPassive._triggerMethodHash) RegisterTiming(timing);
+                customPassive.Init_After();
             }
 
             if ((attributeResonanceCondition == null || attributeResonanceCondition.Count <= 0) && (attributeStockCondition == null || attributeStockCondition.Count <= 0) == false) OnPassiveActivated();
@@ -674,7 +675,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
+        public int GetExpectedCoinScaleAdder(BattleActionModel action, CoinModel coin, COIN_ROLL_TYPE rollType, BattleActionModel oppoActionOrNull, SinActionModel expectedTargetSinActionOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedCoinScaleAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -686,7 +687,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedCoinScaleAdder(action, coin, rollType, expectedTargetSinActionOrNull); }
+                try { result += realAbility.GetExpectedCoinScaleAdder(action, coin, rollType, oppoActionOrNull, expectedTargetSinActionOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -788,7 +789,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public int GetExpectedSkillPowerAdder(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleActionModel> prevActions, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
+        public int GetExpectedSkillPowerAdder(BattleActionModel action, COIN_ROLL_TYPE rollType, SinActionModel expectedTargetSinActionOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedSkillPowerAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -800,14 +801,14 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedSkillPowerAdder(action, prevActions, rollType, expectedTargetSinActionOrNull); }
+                try { result += realAbility.GetExpectedSkillPowerAdder(action, rollType, expectedTargetSinActionOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
             return result;
         }
 
-        public int GetSkillPowerResultAdder(BattleActionModel action, BATTLE_EVENT_TIMING timing)
+        public int GetSkillPowerResultAdder(BattleActionModel action, BATTLE_EVENT_TIMING timing, BattleActionModel attackerActionOrNull, bool calculateSystemAdder, CoinModel coinOrNull)
         {
             string methodName = nameof(PassiveModel.GetSkillPowerResultAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -819,14 +820,14 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetSkillPowerResultAdder(action, timing); }
+                try { result += realAbility.GetSkillPowerResultAdder(action, timing, attackerActionOrNull, calculateSystemAdder, coinOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
             return result;
         }
 
-        public int GetExpectedSkillPowerResultAdder(BattleActionModel action, Il2CppSystem.Collections.Generic.List<BattleActionModel> prevActions, BattleUnitModel expectedTarget)
+        public int GetExpectedSkillPowerResultAdder(BattleActionModel action, Il2CppSystem.Collections.Generic.List<int> indexes, SinActionModel opppoSinActionOrNull, BattleActionModel oppoActionOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedSkillPowerResultAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -838,7 +839,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedSkillPowerResultAdder(action, prevActions, expectedTarget); }
+                try { result += realAbility.GetExpectedSkillPowerResultAdder(action, indexes, opppoSinActionOrNull, oppoActionOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -882,7 +883,7 @@ namespace CustomVanillaAbility.CustomClasses
 
             return result;
         }
-        public int GetAttackDmgAdder(BattleActionModel action, BattleUnitModel target)
+        public int GetAttackDmgAdder(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel)
         {
             string methodName = nameof(PassiveModel.GetAttackDmgAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -894,14 +895,14 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetAttackDmgAdder(action, target); }
+                try { result += realAbility.GetAttackDmgAdder(action, coin, target, isWinDuel); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
             return result;
         }
 
-        public int GetExpectedAttackDmgAdder(BattleActionModel action, BattleUnitModel targetOrNull)
+        public int GetExpectedAttackDmgAdder(BattleActionModel action, CoinModel coin, BattleUnitModel targetOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedAttackDmgAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -913,7 +914,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedAttackDmgAdder(action, targetOrNull); }
+                try { result += realAbility.GetExpectedAttackDmgAdder(action, coin, targetOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -939,7 +940,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public int GetAttackHpDmgAdder(BattleUnitModel target)
+        public int GetAttackHpDmgAdder(BattleActionModel action, CoinModel coin, bool isWinDuel, BattleUnitModel target)
         {
             string methodName = nameof(PassiveModel.GetAttackHpDmgAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -951,14 +952,14 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetAttackHpDmgAdder(target); }
+                try { result += realAbility.GetAttackHpDmgAdder(action, coin, isWinDuel, target); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
             return result;
         }
 
-        public int GetExpectedAttackHpDmgAdder(BattleActionModel action, BattleUnitModel targetOrNull)
+        public int GetExpectedAttackHpDmgAdder(BattleActionModel action, CoinModel coin, bool isWinDuel, BattleUnitModel targetOrNull)
         {
             string methodName = nameof(PassiveModel.GetExpectedAttackHpDmgAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -970,7 +971,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedAttackHpDmgAdder(action, targetOrNull); }
+                try { result += realAbility.GetExpectedAttackHpDmgAdder(action, coin, isWinDuel, targetOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -1125,7 +1126,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public float GetTakeHpHealMultiplier(BattleUnitModel healerOrNull, ABILITY_SOURCE_TYPE srcType)
+        public float GetTakeHpHealMultiplier(BattleUnitModel healerOrNull, BattleActionModel actionOrNull, ABILITY_SOURCE_TYPE srcType)
         {
             string methodName = nameof(PassiveModel.GetTakeHpHealMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1137,7 +1138,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetTakeHpHealMultiplier(healerOrNull, srcType); }
+                try { result += realAbility.GetTakeHpHealMultiplier(healerOrNull, actionOrNull, srcType); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -1163,7 +1164,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public float GetGiveBsGaugeUpMultiplier(bool onGiveExplosion, BattleActionModel actionOrNull, CoinModel coinOrNull)
+        public float GetGiveBsGaugeUpMultiplier(BattleActionModel action, bool onGiveExplosion, BattleUnitModel target, CoinModel coinOrNull)
         {
             string methodName = nameof(PassiveModel.GetGiveBsGaugeUpMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1175,7 +1176,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetGiveBsGaugeUpMultiplier(onGiveExplosion, actionOrNull, coinOrNull); }
+                try { result += realAbility.GetGiveBsGaugeUpMultiplier(action, onGiveExplosion, target, coinOrNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -1334,7 +1335,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical)
+        public float GetAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel target, bool isWinDuel, bool isCritical, bool isOneSideAttack, OneCoinLog_Attack forEditorItCanBeNull)
         {
             string methodName = nameof(PassiveModel.GetAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1346,7 +1347,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetAttackDmgMultiplier(action, coin, target, isWinDuel, isCritical); }
+                try { result += realAbility.GetAttackDmgMultiplier(action, coin, target, isWinDuel, isCritical, isOneSideAttack, forEditorItCanBeNull); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -1372,7 +1373,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public float GetTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker, bool isCritical)
+        public float GetTakeAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel attacker, bool isCritical)
         {
             string methodName = nameof(PassiveModel.GetTakeAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1384,14 +1385,14 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetTakeAttackDmgMultiplier(action, attacker, isCritical); }
+                try { result += realAbility.GetTakeAttackDmgMultiplier(action, coin, attacker, isCritical); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
             return result;
         }
 
-        public float GetExpectedTakeAttackDmgMultiplier(BattleActionModel action, BattleUnitModel attacker)
+        public float GetExpectedTakeAttackDmgMultiplier(BattleActionModel action, CoinModel coin, BattleUnitModel attacker)
         {
             string methodName = nameof(PassiveModel.GetExpectedTakeAttackDmgMultiplier);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1403,7 +1404,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetExpectedTakeAttackDmgMultiplier(action, attacker); }
+                try { result += realAbility.GetExpectedTakeAttackDmgMultiplier(action, coin, attacker); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
@@ -1429,7 +1430,7 @@ namespace CustomVanillaAbility.CustomClasses
             return result;
         }
 
-        public float GetCriticalChanceAdder(Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
+        public float GetCriticalChanceAdder(BattleActionModel action, CoinModel coin, ref Il2CppSystem.Collections.Generic.Dictionary<BUFF_UNIQUE_KEYWORD, float> affectKeywords)
         {
             string methodName = nameof(PassiveModel.GetCriticalChanceAdder);
             if (!this.timingDict.ContainsKey(methodName)) return 0;
@@ -1441,7 +1442,7 @@ namespace CustomVanillaAbility.CustomClasses
                 if (ability is not CustomPassiveAbilityBase realAbility) continue;
                 if (!realAbility._triggerMethodHash.Contains(methodName)) continue;
 
-                try { result += realAbility.GetCriticalChanceAdder(affectKeywords); }
+                try { result += realAbility.GetCriticalChanceAdder(action, coin, affectKeywords); }
                 catch (System.Exception ex) { CustomVanillaAbilityMain.Instance.Log.LogInfo("Error at method with name = " + methodName + " || returning error = " + ex); }
             }
 
